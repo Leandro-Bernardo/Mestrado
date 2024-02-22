@@ -28,7 +28,7 @@ print(f"X size: {X.size()}")
 print(f"y size: {y.size()}")
 
 # makes batchers for training
-train_loader = DataLoader(list(zip(X_train, y_train)), batch_size=BATCH_SIZE)
+train_loader = DataLoader(list(zip(X_train, y_train)), batch_size=BATCH_SIZE, shuffle = True)
 
 #model definition
 model = torch.nn.Sequential(
