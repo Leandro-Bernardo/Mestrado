@@ -1,19 +1,26 @@
 import torch
 import os
+import numpy as np
+import matplotlib.pyplot as plt 
+
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
-import numpy as np
 
 # variables
-
-EPOCHS = 1
+EPOCHS = 100
 LR = 0.0001
-BATCH_SIZE = 1024  # X size (8705536 descriptors, 448 features (from vgg11))
+BATCH_SIZE = 1024  
 EVALUATION_BATCH_SIZE = 1
 GRADIENT_CLIPPING_VALUE = 0.5
-#MODEL_VERSION = 'model_0' if len(os.listdir("./models")) == 0 else f'model_{len(os.listdir("./models"))}'
-CHECKPOINT_PATH = "./checkpoints/model_1/model_1_epoch_2000"#f"./checkpoint/{MODEL_VERSION}/{MODEL_VERSION}_epoch_2000"
+MODEL_VERSION = 'model_1' #if len(os.listdir("./models")) == 0 else f'model_{len(os.listdir("./models"))}'
+CHECKPOINT_PATH = f"./checkpoints/{MODEL_VERSION}/{MODEL_VERSION}_epoch_3000"#f"./checkpoint/{MODEL_VERSION}/{MODEL_VERSION}_epoch_2000"
 
+#creates directories
+os.makedirs("../evaluation", exist_ok =True)
+os.makedirs(f"../evaluation/predicted_values/{MODEL_VERSION}", exist_ok =True)
+os.makedirs(f"../evaluation/histogram/{MODEL_VERSION}", exist_ok =True)
+os.makedirs(f"../evaluation/error_from_image/from_cnn1_output/{MODEL_VERSION}", exist_ok =True)
+os.makedirs(f"../evaluation/error_from_image/from_original_image/{MODEL_VERSION}", exist_ok =True)
 
 # loads data and splits into training and testing
 X = torch.cat([torch.load(f"../descriptors/sample_{i}") for i in range(int(len(os.listdir("../descriptors")) / 2))], dim=0)
@@ -64,10 +71,11 @@ def train_epoch(model, train_loader, optimizer, loss_fn):
 
 
 def evaluate(model, eval_loader, loss_fn):
-
+    
     model.eval()  # change model to evaluation mode
 
     partial_loss = []
+    predicted_value = []
     correct_predictions = 0
     total_samples = len(eval_loader)
     
@@ -75,23 +83,44 @@ def evaluate(model, eval_loader, loss_fn):
         for X_batch, y_batch in eval_loader:
   
             y_pred = model(X_batch)
+            predicted_value.append(y_pred)
 
             loss = loss_fn(y_pred, y_batch)
             partial_loss.append(loss.item())
 
-            _, predicted = torch.max(y_pred, 1)
-            correct_predictions += (predicted == y_batch).sum().item()
+            #_, predicted = torch.max(y_pred, 1)
+            #correct_predictions += (predicted == y_batch).sum().item()
 
-    accuracy = correct_predictions / total_samples
+   # accuracy = correct_predictions / total_samples
     
-    return partial_loss, accuracy
+    return partial_loss, predicted_value # ,accuracy
 
-# evaluates the model
-partial_loss, accuracy = evaluate(model,train_loader, loss_fn)
+#training          
+for actual_epoch in range(10):#range(EPOCHS):
+    train_loss = train_epoch(model, train_loader, optimizer, loss_fn)
+    
+    print(f"Epoch {actual_epoch + 1}, Loss: {train_loss}")
+
+#evaluation
+partial_loss, predicted_value = evaluate(model,eval_loader, loss_fn)
+
+print(len(eval_loader), len(partial_loss))
+
+with open(f"../evaluation/predicted_values/{MODEL_VERSION}/{MODEL_VERSION}.txt", "a+") as file:
+    file.write("predicted_value\n")
+for predicted_value in predicted_value:
+    file.write(f"{predicted_value}\n")
 
 
 # reshapes to the size of the output from the first cnn in vgg11 (112,112) and the total of images (len(eval_loader)/(112*112) = 695)
-partial_loss = np.reshape(partial_loss, (len(eval_loader)/(112*112), 112,112)) 
+partial_loss_from_cnn1_output = np.reshape(partial_loss, (len(eval_loader)/(112*112), 112,112))
+
+for i, image in enumerate(partial_loss_from_cnn1_output):
+    plt.imsave(f"../evaluation/error_from_image/from_cnn1_output/{MODEL_VERSION}/sample_{i}.png", image)
+
 
 # resize to the original input size (224,224)
-partial_loss = np.resize(partial_loss, (224,224))
+partial_loss_from_original_image = np.resize(partial_loss_from_cnn1_output, (224,224))
+
+for i, image in enumerate(partial_loss_from_original_image):
+    plt.imsave(f"../evaluation/error_from_image/from_original_image/{MODEL_VERSION}/sample_{i}.png", image)
