@@ -3,10 +3,8 @@ import os
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
-
 # creates directories
 os.makedirs("./models", exist_ok =True)
-os.makedirs("./checkpoints", exist_ok =True)
 os.makedirs("./learning_values", exist_ok =True)
 
 # variables
@@ -22,22 +20,24 @@ USE_CHECKPOINT = True
 if USE_CHECKPOINT:
     avaliable_checkpoints = sorted(os.listdir(f"./checkpoints/{MODEL_VERSION}"), key = lambda x: int(x.split('_')[-1]))
     CHECKPOINT_PATH = f"./checkpoints/{MODEL_VERSION}/{avaliable_checkpoints[-1]}"
-    print('Using this checkpoint:', CHECKPOINT_PATH)
     FIRST_EPOCH = int(CHECKPOINT_PATH.split('_')[-1]) + 1
+    print('Using this checkpoint:', CHECKPOINT_PATH)
+    print('First epoch:', FIRST_EPOCH)
 
 os.makedirs(f"./models/{MODEL_VERSION}/checkpoints", exist_ok =True)
 
 # loads data and splits into training and testing
-X = torch.cat([torch.load(f"../descriptors/sample_{i}") for i in range(int(len(os.listdir("../descriptors")) / 2))], dim=0)
-y = torch.cat([torch.load(f"../descriptors/sample_{i}_anotation") for i in range(int(len(os.listdir("../descriptors")) / 2))], dim=0)
+X = torch.cat([torch.load(f"./descriptors/sample_{i}") for i in range(int(len(os.listdir("./descriptors")) / 2))], dim=0)
+y = torch.cat([torch.load(f"./descriptors/sample_{i}_anotation") for i in range(int(len(os.listdir("./descriptors")) / 2))], dim=0)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, y_train = X, y
 
 print(f"X size: {X.size()}")
 print(f"y size: {y.size()}")
 
 # makes batchers for training
-train_loader = DataLoader(list(zip(X_train, y_train)), batch_size=BATCH_SIZE, shuffle = True)
+train_loader = DataLoader(list(zip(X_train, y_train)), batch_size=BATCH_SIZE)
 
 #model definition
 model = torch.nn.Sequential(
@@ -49,7 +49,7 @@ model = torch.nn.Sequential(
     torch.nn.ReLU(),
     torch.nn.Linear(in_features=64, out_features=32),
     torch.nn.ReLU(),
-    torch.nn.Linear(in_features=32, out_features=1)
+    torch.nn.Linear(in_features=32, out_features=1), 
 )
 
 loss_fn = torch.nn.MSELoss()
@@ -61,7 +61,6 @@ if USE_CHECKPOINT:
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     
 #utilities
-
 def train_epoch(model, train_loader, optimizer, loss_fn):
     model.train()
     total_loss = 0
@@ -82,14 +81,13 @@ def checkpoint(model_name, model, optimizer, epoch): #saves the models params
         'optimizer_state_dict': optimizer.state_dict(),
     }, f"./checkpoints/{model_name}/{model_name}_epoch_{epoch}")
 
-
 #training   
 if USE_CHECKPOINT:
     pass
 else:
     with open(f"./learning_values/{MODEL_VERSION}.txt", 'w') as file:
         file.write("Epoch\tLoss\n")
-       
+
 for epoch in range(FIRST_EPOCH, FINAL_EPOCH):
     train_loss = train_epoch(model, train_loader, optimizer, loss_fn)
     
