@@ -115,19 +115,20 @@ print("Evaluation time")
 _, predicted_value, expected_value = evaluate(model,eval_loader, loss_fn)
 
 
-with open(f"./evaluation/predicted_values/{MODEL_VERSION}/{MODEL_VERSION}.txt", "a+") as file:
+with open(f"./evaluation/predicted_values/{MODEL_VERSION}/{MODEL_VERSION}.txt", "w") as file: # overrides if file exists
     file.write("predicted_value,expected_value\n")
     
+with open(f"./evaluation/predicted_values/{MODEL_VERSION}/{MODEL_VERSION}.txt", "a+") as file:
     for i in range(len(predicted_value)):
         file.write(f"{predicted_value[i]},{expected_value[i]}\n")
 
 #histograms
-predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value, -1, 112,112))}
-expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value, -1, 112,112))}
+predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, 112,112)))}
+expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, 112,112)))}
 for i in range(int(len(eval_loader)/(112*112))):
     values = predicted_value_for_samples[f'sample_{i}']
     plt.hist(values, edgecolor ='black')
-    plt.title(f"Sample: sample_{i} Expected Value: {expected_value_from_samples[f'sample_{i}'][0]}")
+    plt.title(f"Sample_{i}, Expected Value: {round(expected_value_from_samples[f'sample_{i}'][0][0], 2)}")
     plt.xlabel('Prediction')
     plt.ylabel('Count')
     plt.savefig(f'./evaluation/histogram/{MODEL_VERSION}/sample_{i}.png')
