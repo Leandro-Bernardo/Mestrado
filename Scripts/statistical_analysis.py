@@ -123,6 +123,7 @@ with open(f"./evaluation/predicted_values/{MODEL_VERSION}/{MODEL_VERSION}.txt", 
         file.write(f"{predicted_value[i]},{expected_value[i]}\n")
 
 #histograms
+print("calculating histograms of predictions\n")
 predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, 112,112)))}
 expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, 112,112)))}
 for i in range(int(len(eval_loader)/(112*112))):
@@ -134,6 +135,7 @@ for i in range(int(len(eval_loader)/(112*112))):
     plt.savefig(f'./evaluation/histogram/{MODEL_VERSION}/sample_{i}.png')
 
 # reshapes to the size of the output from the first cnn in vgg11 (112,112) and the total of images (len(eval_loader)/(112*112) = 695)
+print("reshaping images to match cnn1 output\n")
 partial_loss_from_cnn1_output = np.reshape(partial_loss, -1, 112,112)
 
 for i, image in enumerate(partial_loss_from_cnn1_output):
@@ -141,10 +143,21 @@ for i, image in enumerate(partial_loss_from_cnn1_output):
 
 
 # resize to the original input size (224,224)
+print("resizing images to original size\n")
 partial_loss_from_original_image = []#np.resize(partial_loss_from_cnn1_output, (224,224))
 for image in partial_loss_from_cnn1_output:
     resized_image = cv2.resize(image, (224, 224), interpolation = cv2.INTER_NEAREST)
     partial_loss_from_original_image.append(resized_image)
 
-for i, image in enumerate(partial_loss_from_original_image):
-    plt.imsave(f"./evaluation/error_from_image/from_original_image/{MODEL_VERSION}/sample_{i}.png", image)
+for i, error_map in enumerate(partial_loss_from_original_image):
+    original_image = cv2.cvtColor(cv2.imread(f"./images/sample_{i}.png"), cv2.COLOR_BGR2RGB)
+    
+    #plots error map and original image sidewise
+    fig,ax = plt.subplots(nrows=1,ncols=2)
+    fig.suptitle(f"Sample_{i}: error map  X  original image")
+    ax[0].imshow(error_map)
+    ax[1].imshow(original_image)
+    plt.savefig(f"./evaluation/error_from_image/from_original_image/{MODEL_VERSION}/sample_{i}.png")
+    plt.close('all')
+    
+    #plt.imsave(f"./evaluation/error_from_image/from_original_image/{MODEL_VERSION}/sample_{i}.png", image)
