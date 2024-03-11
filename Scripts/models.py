@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader
 
 
 # creates directories
-os.makedirs("./models", exist_ok =True)
 os.makedirs("./checkpoints", exist_ok =True)
 os.makedirs("./learning_values", exist_ok =True)
 
@@ -17,15 +16,15 @@ BATCH_SIZE = 1024
 GRADIENT_CLIPPING_VALUE = 0.5
 CHECKPOINT_SAVE_INTERVAL = 50
 MODEL_VERSION = 'model_1' 
-USE_CHECKPOINT = True
+USE_CHECKPOINT = False
 
 if USE_CHECKPOINT:
     avaliable_checkpoints = sorted(os.listdir(f"./checkpoints/{MODEL_VERSION}"), key = lambda x: int(x.split('_')[-1]))
     CHECKPOINT_PATH = f"./checkpoints/{MODEL_VERSION}/{avaliable_checkpoints[-1]}"
     print('Using this checkpoint:', CHECKPOINT_PATH)
     FIRST_EPOCH = int(CHECKPOINT_PATH.split('_')[-1]) + 1
-
-os.makedirs(f"./models/{MODEL_VERSION}/checkpoints", exist_ok =True)
+else:
+    os.makedirs(f"./checkpoints/{MODEL_VERSION}/", exist_ok =True)
 
 # loads data and splits into training and testing
 X = torch.cat([torch.load(f"../descriptors/sample_{i}") for i in range(int(len(os.listdir("../descriptors")) / 2))], dim=0)
