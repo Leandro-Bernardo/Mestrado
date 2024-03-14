@@ -59,7 +59,7 @@ for sample_key, sample in image_tensor.items():  #extrai caracteristicas das cam
 
     #concatena todas as imagens em um unico tensor e faz o cropp baseado no campo receptivo da terceira camada (22 x 22)
     sample_features = torch.cat((features2, features5_rescaled, features10_rescaled), dim=0)                       # shape: 448 , 112, 112
-    sample_features = sample_features[:, 11 : sample_features.shape[1] - 11,  11 : sample_features.shape[2] - 11]  # shape: 448 ,  90,  90
+    sample_features = sample_features[:, 9 : sample_features.shape[1] - 9,  9 : sample_features.shape[2] - 9]  # shape: 448 ,  90,  90
     sample_features = torch.flatten(torch.permute(sample_features, (1, 2, 0)), start_dim=0, end_dim=1)  # flatten    shape: num_vectors, num_channels
     
     #le o valor de alcalinidade (dado) e expande a dimensão (atualmente 1d) para o tamanho do descritor da sua respectiva imagem

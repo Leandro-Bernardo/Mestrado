@@ -16,7 +16,7 @@ BATCH_SIZE = 1024
 GRADIENT_CLIPPING_VALUE = 0.5
 CHECKPOINT_SAVE_INTERVAL = 50
 MODEL_VERSION = 'model_1' 
-USE_CHECKPOINT = False
+USE_CHECKPOINT = True
 
 if USE_CHECKPOINT:
     avaliable_checkpoints = sorted(os.listdir(f"./checkpoints/{MODEL_VERSION}"), key = lambda x: int(x.split('_')[-1]))
