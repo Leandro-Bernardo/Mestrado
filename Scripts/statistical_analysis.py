@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
+#from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 if not torch.cuda.is_available():
@@ -55,7 +55,7 @@ print(f"X_train, y_train size: {X_train.size()}, {y_train.size()}")
 print(f"X_test, y_test size: {X_test.size()}, {y_test.size()}")
 
 # makes batchers for training
-train_loader = DataLoader(list(zip(X_test, y_train)), batch_size = BATCH_SIZE, shuffle= True)
+train_loader = DataLoader(list(zip(X_train, y_train)), batch_size = BATCH_SIZE, shuffle= True)
 eval_loader = DataLoader(list(zip(X_test, y_test)), batch_size = EVALUATION_BATCH_SIZE, shuffle = False)
 
 del X_train

@@ -11,9 +11,17 @@ Scripts/teste.ipynb
 ./cache_dir
 ./images
 Scripts/testes.ipynb
+
+descriptors/
 
 descriptors/
 
+<<<<<<< Updated upstream
 .vscode/launch.json
 
 .vscode/settings.json
+=======
+Scripts/chemical_analysis/__pycache__/
+
+Scripts/chemical_analysis/alkalinity/__pycache__/
+>>>>>>> Stashed changes
