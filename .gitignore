@@ -13,3 +13,7 @@ Scripts/teste.ipynb
 Scripts/testes.ipynb
 
 descriptors/
+
+.vscode/launch.json
+
+.vscode/settings.json
