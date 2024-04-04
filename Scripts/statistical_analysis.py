@@ -135,9 +135,9 @@ def evaluate(model, eval_loader, loss_fn):
 class Statistics():
 
     def __init__(self, sample_predictions_vector):
-        self.mean = scipy.stats.mean(sample_predictions_vector)
-        self.median = scipy.stats.median(sample_predictions_vector)
-        self.mode = scipy.stats.mode(sample_predictions_vector)
+        self.mean = np.mean(sample_predictions_vector)
+        self.median = np.median(sample_predictions_vector)
+        self.mode = scipy.stats.mode(sample_predictions_vector)[0]
         self.variance = scipy.stats.variation(sample_predictions_vector)
         self.std = scipy.stats.tstd(sample_predictions_vector) 
         self.min_value = min(sample_predictions_vector)
