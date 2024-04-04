@@ -143,6 +143,8 @@ class Statistics():
         self.min_value = min(sample_predictions_vector)
         self.max_value = max(sample_predictions_vector)
 
+def write_pdf_statistics():
+    pass
 
 def main():
     #training
