@@ -59,7 +59,7 @@ train_loader = DataLoader(list(zip(X_train, y_train)), batch_size = BATCH_SIZE, 
 eval_loader = DataLoader(list(zip(X_test, y_test)), batch_size = EVALUATION_BATCH_SIZE, shuffle = False)
 
 # saves values for graph scale
-min_value, max_value = torch.min(y_test), torch.max(y_test)
+min_value, max_value = float(torch.min(y_test)), float(torch.max(y_test))
 
 # clears data from memory
 del X_train
@@ -135,13 +135,14 @@ def evaluate(model, eval_loader, loss_fn):
 class Statistics():
 
     def __init__(self, sample_predictions_vector):
-        self.mean = np.mean(sample_predictions_vector)
-        self.median = np.median(sample_predictions_vector)
-        self.mode = scipy.stats.mode(sample_predictions_vector)[0]
-        self.variance = scipy.stats.variation(sample_predictions_vector)
-        self.std = scipy.stats.tstd(sample_predictions_vector) 
-        self.min_value = min(sample_predictions_vector)
-        self.max_value = max(sample_predictions_vector)
+        self.sample_predictions_vector = torch.tensor(sample_predictions_vector)
+        self.mean = torch.mean(self.sample_predictions_vector).item()
+        self.median = torch.median(self.sample_predictions_vector).item()
+        self.mode = torch.mode(torch.flatten(self.sample_predictions_vector))[0].item()
+        self.variance = torch.var(self.sample_predictions_vector).item()
+        self.std = torch.std(self.sample_predictions_vector).item()
+        self.min_value = torch.min(self.sample_predictions_vector).item()
+        self.max_value = torch.max(self.sample_predictions_vector).item()
 
 def write_pdf_statistics():
     pass
@@ -174,23 +175,62 @@ def main():
     for i in range(int(len(eval_loader)/(94*94))):
         values = predicted_value_for_samples[f'sample_{i}']
         stats = Statistics(predicted_value_for_samples[f'sample_{i}'])
+        plt.figure(figsize=(15, 8))
+
         plt.hist(values, edgecolor ='black')
-        plt.title(f"Sample_{i}, Expected Value: {round(expected_value_from_samples[f'sample_{i}'][0][0], 2)}")
+
+        # adds vertical lines for basic statistic values
+        plt.axvline(x = stats.mean, alpha = 0.3, c = 'red')
+        plt.axvline(x = stats.median, alpha = 0.3, c = 'blue')
+        plt.axvline(x = stats.mode, alpha = 0.3, c = 'green')
+
+        plt.title(f"Sample_{i + train_split_size}, Expected Value: {round(expected_value_from_samples[f'sample_{i}'][0][0], 2)}")
         plt.xlabel('Prediction')
         plt.ylabel('Count')
-        plt.xlim((min_value, max_value))
-        plt.text(x = max_value + 0.5,  y = 0,
-                 s = f" mean: {stats.mean}\n median: {stats.median}\n mode: {stats.mode}\n var: {stats.variance:.2}\n std: {stats.std:.2}\n min: {stats.min_value}\n max: {stats.max_value}")
+
+        # defines x axis limits
+        x_min, x_max = min_value, max_value
+        plt.xlim((x_min, x_max))
+
+        # get the limits from y axis (which is count based)
+        y_min, y_max = plt.ylim()
+
+        # Defines a scale factor for positions in y axis
+        scale_factor = 0.08 * y_max
+
+        #text settings
+        plt.text(x = x_max+0.5,  y=y_max - 10.41 * scale_factor,
+                s = f" mean:")
+
+        plt.text(x = x_max + 210, y=y_max - 10.41 * scale_factor,
+                s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
+
+        plt.text(x = x_max ,  y=y_max - 10.75 * scale_factor,
+                s = f" median:" )
+
+        plt.text(x = x_max + 240, y=y_max - 10.75 * scale_factor,
+                s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
+
+        plt.text(x = x_max ,  y=y_max - 11.09 * scale_factor,
+                s = f" mode:" )
+
+        plt.text(x = x_max + 210,  y=y_max - 11.09 * scale_factor,
+                s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
+
+        plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
+                s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}")
+
+        #plt.text(x = max_value + 0.5,  y = 0,
+        #         s = f" mean: {stats.mean:.2f}\n median: {stats.median:.2f}\n mode: {stats.mode:.2f}\n var: {stats.variance:.2f}\n std: {stats.std:.2f}\n min: {stats.min_value:.2f}\n max: {stats.max_value:.2f}")
         plt.savefig(os.path.join(EVALUATION_ROOT, "histogram", MODEL_VERSION, f"sample_{i + train_split_size + 1}.png"))
         plt.close('all')
 
     # reshapes to the size of the output from the first cnn in vgg11 (112 - 18, 112 - 18) and the total of images (len(eval_loader)/(112*112) = 695)
     print("reshaping images to match cnn1 output\n")
-    partial_loss_from_cnn1_output = np.reshape(partial_loss, -1, 94, 94)
+    partial_loss_from_cnn1_output = np.reshape(partial_loss, (-1, 94, 94))
 
     for i, image in enumerate(partial_loss_from_cnn1_output):
         plt.imsave(os.path.join(EVALUATION_ROOT, "error_from_image","from_cnn1_output", MODEL_VERSION, f"sample_{i + train_split_size + 1}.png"), image)
-
 
     # resize to the original input size (224,224)
     print("resizing images to original size\n")
@@ -199,15 +239,19 @@ def main():
         resized_image = cv2.resize(image, (224, 224), interpolation = cv2.INTER_NEAREST)
         partial_loss_from_original_image.append(resized_image)
 
-    for i, error_map in enumerate(partial_loss_from_original_image):
-        original_image = cv2.cvtColor(cv2.imread(f"./images/sample_{i + train_split_size + 1}.png"), cv2.COLOR_BGR2RGB)
+    partial_loss_from_original_image = np.array(partial_loss_from_original_image) #to optimize computing
+
+    for i in range(len(partial_loss_from_original_image)):
+        original_image = cv2.imread(os.path.join(os.path.dirname(__file__),"..", "images", f"sample_{i + train_split_size}.png"))
+        original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
+        original_image = original_image[9 : original_image.shape[0] - 9,  9 : original_image.shape[1] - 9,:] # cropps the image to match the cropped image after 3rd cnn
 
         #plots error map and original image sidewise
         fig,ax = plt.subplots(nrows=1,ncols=2)
-        fig.suptitle(f"Sample_{i + train_split_size + 1}: error map  X  original image")
-        ax[0].imshow(error_map)
+        fig.suptitle(f"Sample_{i + train_split_size}: error map  X  original image")
+        ax[0].imshow(partial_loss_from_original_image[i])
         ax[1].imshow(original_image)
-        plt.savefig(os.path.join(EVALUATION_ROOT, "error_from_image", "from_original_image", MODEL_VERSION, f"sample_{i + train_split_size + 1}.png"))
+        plt.savefig(os.path.join(EVALUATION_ROOT, "error_from_image", "from_original_image", MODEL_VERSION, f"sample_{i + train_split_size}.png"))
         plt.close('all')
 
         #plt.imsave(f"./evaluation/error_from_image/from_original_image/{MODEL_VERSION}/sample_{i}.png", image)

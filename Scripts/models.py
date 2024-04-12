@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 if not torch.cuda.is_available():
     assert("cuda isnt available")
+    device = "cuda"
 
 else:
     device = "cuda"
@@ -15,12 +16,12 @@ else:
 FIRST_EPOCH = 0
 FINAL_EPOCH = 5000
 LR = 0.0001
-BATCH_SIZE = 64  
+BATCH_SIZE = 64
 GRADIENT_CLIPPING_VALUE = 0.5
 CHECKPOINT_SAVE_INTERVAL = 25
-MODEL_VERSION = 'model_1' 
+MODEL_VERSION = 'model_1'
 DATASET_SPLIT = 0.8
-USE_CHECKPOINT = False
+USE_CHECKPOINT = True
 
 #defines path dir
 CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints")
@@ -80,14 +81,14 @@ if USE_CHECKPOINT:
     checkpoint = torch.load(CHECKPOINT_PATH)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    
+
 
 def train_epoch(model, train_loader, optimizer, loss_fn):
     model.train()
     total_loss = 0
     for X_batch, y_batch in train_loader:
         optimizer.zero_grad()
-        y_pred = model(X_batch).squeeze(1) 
+        y_pred = model(X_batch).squeeze(1)
         loss = loss_fn(y_pred, y_batch)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_CLIPPING_VALUE)
@@ -96,28 +97,30 @@ def train_epoch(model, train_loader, optimizer, loss_fn):
     return total_loss / len(train_loader)
 
 def checkpoint(model_name, model, optimizer, epoch): #saves the models params
-    torch.save({
+    torch.save(
+        {
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
-    }, f"./checkpoints/{model_name}/{model_name}_epoch_{epoch}")
+        },
+        os.path.join(CHECKPOINT_ROOT, model_name, f"{model_name}_epoch_{epoch}")
+            )
 
 
-#training   
+#training
 if USE_CHECKPOINT:
     pass
 else:
-    with open(os.path.join(LEARNING_VALUES_ROOT, f"{MODEL_VERSION}.txt", 'w')) as file:
+    with open(os.path.join(LEARNING_VALUES_ROOT, f"{MODEL_VERSION}.txt"), 'w') as file:
         file.write("Epoch\tLoss\n")
-       
-for epoch in tdqm(range(FIRST_EPOCH, FINAL_EPOCH)):
+
+for epoch in tqdm(range(FIRST_EPOCH, FINAL_EPOCH)):
     train_loss = train_epoch(model, train_loader, optimizer, loss_fn)
-    
-    with open(os.path.join(LEARNING_VALUES_ROOT, f"{MODEL_VERSION}.txt", 'a+')) as file:
+
+    with open(os.path.join(LEARNING_VALUES_ROOT, f"{MODEL_VERSION}.txt"), 'a+') as file:
         file.write(f"{epoch}\t{train_loss}\n")
-    
-    print(f"Epoch {epoch}, Loss: {train_loss}")
+
+    print(f"  Epoch {epoch}, Loss: {train_loss}")
 
     if (epoch) % CHECKPOINT_SAVE_INTERVAL == 0:  #saves model weights at fixed rate
         checkpoint(MODEL_VERSION, model, optimizer, epoch)
-        
