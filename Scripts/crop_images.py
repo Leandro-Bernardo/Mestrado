@@ -7,12 +7,18 @@ import os
 
 from chemical_analysis.alkalinity import AlkalinitySampleDataset, ProcessedAlkalinitySampleDataset
 
-os.makedirs("../images", exist_ok =True)
-os.makedirs("../cache_dir", exist_ok =True)
+#variables
+SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", "Alkalinity_Samples")
+CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
+SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "images")
 
-#preprocessamento dos dados 
+#defines path dir
+os.makedirs(os.path.join(os.path.dirname(__file__), "..", "images"), exist_ok =True)
+os.makedirs(os.path.join(os.path.dirname(__file__), "..", "cache_dir"), exist_ok =True)
+
+#data preprocessing
 samples = AlkalinitySampleDataset(
-    base_dirs = '../Alkalinity_Samples',  
+    base_dirs = SAMPLES_PATH,  
     progress_bar = True, 
     skip_blank_samples = True, 
     skip_incomplete_samples = True, 
@@ -23,14 +29,14 @@ samples = AlkalinitySampleDataset(
 
 processed_samples = ProcessedAlkalinitySampleDataset(
     dataset = samples, 
-    cache_dir = '../cache_dir',
+    cache_dir = CACHE_PATH,
     num_augmented_samples = 0, 
     progress_bar = True, 
     transform = None,
 )
 
 
-#crop centralizado
+#centered crop
 
 for i, _ in enumerate(processed_samples):
     print(f"Imagem {i}")
@@ -51,10 +57,10 @@ for i, _ in enumerate(processed_samples):
         cropped_image = actual_image[int(image_heigth/2)-112:int(image_heigth/2)+112, int(image_width/2)-112:int(image_width/2)+112]
 
         #saves images
-        plt.imsave(f"../images/sample_{i}.png", cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)/255)
+        plt.imsave(f"{SAVE_PATH}/sample_{i}.png", cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)/255)
 
         #saves alkalinity value
-        with open(f"../images/sample_{i}.txt", "w", encoding='utf-8') as f:
+        with open(f"{SAVE_PATH}/sample_{i}.txt", "w", encoding='utf-8') as f:
             json.dump(processed_samples.alkalinity_values[i]['theoreticalValue'],f, ensure_ascii=False, indent=4)
     except: 
         print(f"Imagem problematica : {i}")
