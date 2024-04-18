@@ -27,3 +27,11 @@ Scripts/chemical_analysis/alkalinity/__pycache__/
 >>>>>>> Stashed changes
 
 Scripts/test.ipynb
+
+Scripts/checkpoints/model_1/
+
+Scripts/evaluation(825 epoch)/error_from_image/from_cnn1_output/model_1/
+
+Scripts/evaluation(825 epoch)/error_from_image/from_original_image/model_1/
+
+*.png
