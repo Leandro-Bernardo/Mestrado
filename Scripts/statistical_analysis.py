@@ -3,7 +3,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-import scipy.stats
 
 from tqdm import tqdm
 #from sklearn.model_selection import train_test_split
@@ -135,12 +134,13 @@ def evaluate(model, eval_loader, loss_fn):
 class Statistics():
 
     def __init__(self, sample_predictions_vector):
-        self.sample_predictions_vector = torch.tensor(sample_predictions_vector)
+        self.sample_predictions_vector = torch.tensor(sample_predictions_vector, dtype=torch.float32)
         self.mean = torch.mean(self.sample_predictions_vector).item()
         self.median = torch.median(self.sample_predictions_vector).item()
-        self.mode = torch.mode(torch.flatten(self.sample_predictions_vector))[0].item()
+        self.mode = scipy.stats.mode(self.sample_predictions_vector.numpy(), axis = None)[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
         self.variance = torch.var(self.sample_predictions_vector).item()
         self.std = torch.std(self.sample_predictions_vector).item()
+        self.mad = scipy.stats.median_abs_deviation(self.sample_predictions_vector.numpy())
         self.min_value = torch.min(self.sample_predictions_vector).item()
         self.max_value = torch.max(self.sample_predictions_vector).item()
 
@@ -180,9 +180,9 @@ def main():
         plt.hist(values, edgecolor ='black')
 
         # adds vertical lines for basic statistic values
-        plt.axvline(x = stats.mean, alpha = 0.3, c = 'red')
-        plt.axvline(x = stats.median, alpha = 0.3, c = 'blue')
-        plt.axvline(x = stats.mode, alpha = 0.3, c = 'green')
+        plt.axvline(x = stats.mean, alpha = 0.5, c = 'red')
+        plt.axvline(x = stats.median, alpha = 0.5, c = 'blue')
+        plt.axvline(x = stats.mode, alpha = 0.5, c = 'green')
 
         plt.title(f"Sample_{i + train_split_size}, Expected Value: {round(expected_value_from_samples[f'sample_{i}'][0][0], 2)}")
         plt.xlabel('Prediction')
@@ -198,27 +198,28 @@ def main():
         # Defines a scale factor for positions in y axis
         scale_factor = 0.08 * y_max
 
+
         #text settings
-        plt.text(x = x_max+0.5,  y=y_max - 10.41 * scale_factor,
+        plt.text(x = x_max+0.5,  y=y_max - 10.20 * scale_factor,
                 s = f" mean:")
 
-        plt.text(x = x_max + 210, y=y_max - 10.41 * scale_factor,
+        plt.text(x = x_max + 210, y=y_max - 10.20 * scale_factor,
                 s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
 
-        plt.text(x = x_max ,  y=y_max - 10.75 * scale_factor,
+        plt.text(x = x_max ,  y=y_max - 10.49 * scale_factor,
                 s = f" median:" )
 
-        plt.text(x = x_max + 240, y=y_max - 10.75 * scale_factor,
+        plt.text(x = x_max + 240, y=y_max - 10.49 * scale_factor,
                 s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
 
-        plt.text(x = x_max ,  y=y_max - 11.09 * scale_factor,
+        plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
                 s = f" mode:" )
-
-        plt.text(x = x_max + 210,  y=y_max - 11.09 * scale_factor,
+                
+        plt.text(x = x_max + 210,  y=y_max - 10.78 * scale_factor,
                 s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
 
         plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
-                s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}")
+                s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}")
 
         #plt.text(x = max_value + 0.5,  y = 0,
         #         s = f" mean: {stats.mean:.2f}\n median: {stats.median:.2f}\n mode: {stats.mode:.2f}\n var: {stats.variance:.2f}\n std: {stats.std:.2f}\n min: {stats.min_value:.2f}\n max: {stats.max_value:.2f}")
@@ -236,7 +237,7 @@ def main():
     print("resizing images to original size\n")
     partial_loss_from_original_image = []#np.resize(partial_loss_from_cnn1_output, (224,224))
     for image in partial_loss_from_cnn1_output:
-        resized_image = cv2.resize(image, (224, 224), interpolation = cv2.INTER_NEAREST)
+        resized_image = cv2.resize(image, (206, 206), interpolation = cv2.INTER_NEAREST)
         partial_loss_from_original_image.append(resized_image)
 
     partial_loss_from_original_image = np.array(partial_loss_from_original_image) #to optimize computing
