@@ -6,6 +6,7 @@ import cv2
 import chemical_analysis
 import shutil
 import pandas as pd
+import scipy
 
 from tqdm import tqdm
 #from sklearn.model_selection import train_test_split
@@ -157,15 +158,26 @@ def evaluate(model, eval_loader, loss_fn):
 
 class Statistics():
 
-    def __init__(self, sample_predictions_vector):
+    def __init__(self, sample_predictions_vector, sample_expected_value):
         self.sample_predictions_vector = torch.tensor(sample_predictions_vector)
+        self.sample_expected_value = torch.tensor(sample_expected_value)
+
+        self.sample_predictions_vector = torch.tensor(sample_predictions_vector, dtype=torch.float32)
         self.mean = torch.mean(self.sample_predictions_vector).item()
         self.median = torch.median(self.sample_predictions_vector).item()
-        self.mode = torch.mode(torch.flatten(self.sample_predictions_vector))[0].item()
+        self.mode = scipy.stats.mode(self.sample_predictions_vector.numpy(), axis = None)[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
         self.variance = torch.var(self.sample_predictions_vector).item()
         self.std = torch.std(self.sample_predictions_vector).item()
+        self.mad = scipy.stats.median_abs_deviation(self.sample_predictions_vector.numpy())
         self.min_value = torch.min(self.sample_predictions_vector).item()
         self.max_value = torch.max(self.sample_predictions_vector).item()
+        self.absolute_error = torch.absolute(self.sample_predictions_vector - self.sample_expected_value)
+        self.relative_error = (self.absolute_error/self.sample_expected_value)*100
+        self.mae = torch.mean(self.absolute_error).item()
+        self.mpe = torch.mean(self.relative_error).item()
+        self.std_mae = torch.std(self.absolute_error).item()
+        self.std_mpe = torch.std(self.relative_error).item()
+
 
 def main():
 
@@ -182,29 +194,36 @@ def main():
     partial_loss, predicted_value, expected_value = evaluate(model,eval_loader, loss_fn)
     predicted_value, expected_value = np.array(predicted_value), np.array(expected_value)
 
-    absolute_error = np.absolute(predicted_value - expected_value)
-    relative_error = (absolute_error/expected_value)*100
+    sample_predicted_value = np.reshape(predicted_value, (test_split_size, -1))
+    sample_expected_value = np.reshape(expected_value, (test_split_size, -1))
 
-    absolute_error_from_samples = np.reshape(absolute_error, (test_split_size, -1))
-    relative_error_from_samples = np.reshape(relative_error, (test_split_size, -1))
+    sample_stats_dict = {}
+    for i in range(0, sample_predicted_value.shape[0] - 1):
+        stats = Statistics(sample_predicted_value[i], sample_expected_value[i])
+        sample_stats_dict[f"sample_{i + train_split_size}"] = {
+                                                              "expected value": sample_expected_value[i],
+                                                              "mean": stats.mean,
+                                                              "median": stats.median,
+                                                              "mode": stats.mode,
+                                                              "variance": stats.variance,
+                                                              "std": stats.std,
+                                                              "median absolute deviation": stats.mad,
+                                                              "min": stats.min_value,
+                                                              "max": stats.max_value,
+                                                              "mean absolute error": stats.mae,
+                                                              "mean percentual error": stats.mpe,
+                                                              "std mean absolute error": stats.std_mae,
+                                                              "std mean percentual error": stats.std_mpe
+                                                             }
 
-    #saves in dict format to create dataframes
-    mean_absolute_error_from_samples = {}
-    for i in range(train_split_size, train_split_size + test_split_size):
-        mean_absolute_error_from_samples[f"sample_{i}"] = np.mean(absolute_error_from_samples[i])
 
-    mean_percentage_error_from_samples = {}
-    for i in rrange(train_split_size, train_split_size + test_split_size):
-        mean_percentage_error_from_samples[f"sample_{i}"] = np.mean(relative_error_from_samples[i])
-
-
-    #mean_absolute_error_from_samples = {f"sample_{i}": mean(value) for i, values in enumerate(absolute_error_from_samples)}
-    #mean_percentage_error_from_samples =  {f"sample_{i}": mean(value) for i, values in enumerate(relative_error_from_samples)}
-    print(mean_absolute_error_from_samples, mean_percentage_error_from_samples)
+    #print(sample_stats_dict["sample_600"])
 
     #creates a dataframe and then saves the xmls file
-    dataframe_mae = pd.DataFrame(mean_absolute_error_from_samples)
-    dataframe_mpe = pd.DataFrame(mean_percentage_error_from_samples)
+    df_stats = pd.DataFrame(sample_stats_dict).transpose()
+
+    save_excel_path = os.path.join(os.path.dirname(__file__), "evaluation", "statistics")
+    df_stats.to_excel(f"{save_excel_path}.xlsx" )
 
     #PMF BASED MODEL
     #evaluation of the pmf based model
@@ -216,6 +235,7 @@ def main():
     #     prediction = estimation_func(calibrated_pmf = torch.as_tensor(Y_test_pmf_model[i].calibrated_pmf, dtype = torch.float32, device = "cuda"))
     #     pmf_model_prediction[f"sample_{i}"] =  prediction
 
+    print(" ")
 
 
 
