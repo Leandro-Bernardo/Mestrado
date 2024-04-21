@@ -5,11 +5,12 @@ import matplotlib.pyplot as plt
 import cv2
 import chemical_analysis
 import shutil
+import pandas as pd
 
 from tqdm import tqdm
 #from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
-from chemical_analysis.alkalinity import AlkalinitySampleDataset, ProcessedAlkalinitySampleDataset
+from chemical_analysis.alkalinity import AlkalinitySampleDataset, ProcessedAlkalinitySampleDataset, AlkalinityEstimationFunction
 
 if not torch.cuda.is_available():
     assert("cuda isnt available")
@@ -18,7 +19,7 @@ else:
     device = "cuda"
 
 # variables
-EPOCHS = 5
+EPOCHS = 1
 LR = 0.0001
 BATCH_SIZE = 64
 EVALUATION_BATCH_SIZE = 1
@@ -34,8 +35,7 @@ CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, MODEL_VERSION, LAST_CHECKPOINT)
 
 ANALYTE = 'Alkalinity'
 PMF_MODEL_PATH = os.path.join(os.path.dirname(__file__), CHECKPOINT_ROOT, f"{ANALYTE}Network.ckpt")
-PMF_SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", f"{ANALYTE}_Samples" )
-TEST_DIR_PATH = os.makedirs(os.path.join(os.path.dirname(__file__), "..", "test_samples", f"{ANALYTE}_Samples"), exist_ok =True)
+SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", f"{ANALYTE}_Samples" )
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
 print('Using this checkpoint:', CHECKPOINT_PATH)
@@ -65,35 +65,32 @@ eval_loader = DataLoader(list(zip(X_test_descriptors_model, y_test_descriptors_m
 min_value, max_value = float(torch.min(y_test_descriptors_model)), float(torch.max(y_test_descriptors_model))
 
 # clears data from memory
-del X_train_descriptorss_model
-del y_train_descriptorss_model
-del X_test_descriptorss_model
-del y_test_descriptorss_model
+del X_train_descriptors_model
+del y_train_descriptors_model
+del X_test_descriptors_model
+del y_test_descriptors_model
 
 torch.cuda.empty_cache()
 
 
-# loads data and splits into training and testing for the image pmf based model
-for test_samples_count in range(train_split_size, train_split_size + test_split_size):
-    shutil.copy(f"sample_{test_samples_count}", TEST_DIR_PATH)
-    
-Y_test_pmf_model = AlkalinitySampleDataset(
-                                            base_dirs= TEST_DIR_PATH,  #TODO colocar as imagens de alkalinidade no formato ordenado de samples (utils/listed_images_samples.py)
-                                            progress_bar = True, 
-                                            skip_blank_samples = True, 
-                                            skip_incomplete_samples = True, 
-                                            skip_inference_sample= True, 
-                                            skip_training_sample = False, 
-                                            verbose = True
-                                            ) 
+# loads all data for the image pmf based model
+# Y_test_pmf_model = AlkalinitySampleDataset(
+#                                             base_dirs= SAMPLES_PATH,  #loads all data for processing
+#                                             progress_bar = True,
+#                                             skip_blank_samples = True,
+#                                             skip_incomplete_samples = True,
+#                                             skip_inference_sample= True,
+#                                             skip_training_sample = False,
+#                                             verbose = True
+#                                             )
 
-Y_test_pmf_model = ProcessedAlkalinitySampleDataset(
-                                                    dataset = Y_test_pmf_model, 
-                                                    cache_dir = CACHE_PATH,
-                                                    num_augmented_samples = 0, 
-                                                    progress_bar = True, 
-                                                    transform = None,
-                                                    )
+# Y_test_pmf_model = ProcessedAlkalinitySampleDataset(
+#                                                     dataset = Y_test_pmf_model,
+#                                                     cache_dir = CACHE_PATH,
+#                                                     num_augmented_samples = 0,
+#                                                     progress_bar = True,
+#                                                     transform = None,
+#                                                     )
 
 # descriptor model based definition
 model = torch.nn.Sequential(
@@ -158,19 +155,21 @@ def evaluate(model, eval_loader, loss_fn):
     return partial_loss, predicted_value, expected_value # ,accuracy
 
 
-# class Statistics():
+class Statistics():
 
-#     def __init__(self, sample_predictions_vector):
-#         self.sample_predictions_vector = torch.tensor(sample_predictions_vector)
-#         self.mean = torch.mean(self.sample_predictions_vector).item()
-#         self.median = torch.median(self.sample_predictions_vector).item()
-#         self.mode = torch.mode(torch.flatten(self.sample_predictions_vector))[0].item()
-#         self.variance = torch.var(self.sample_predictions_vector).item()
-#         self.std = torch.std(self.sample_predictions_vector).item()
-#         self.min_value = torch.min(self.sample_predictions_vector).item()
-#         self.max_value = torch.max(self.sample_predictions_vector).item()
+    def __init__(self, sample_predictions_vector):
+        self.sample_predictions_vector = torch.tensor(sample_predictions_vector)
+        self.mean = torch.mean(self.sample_predictions_vector).item()
+        self.median = torch.median(self.sample_predictions_vector).item()
+        self.mode = torch.mode(torch.flatten(self.sample_predictions_vector))[0].item()
+        self.variance = torch.var(self.sample_predictions_vector).item()
+        self.std = torch.std(self.sample_predictions_vector).item()
+        self.min_value = torch.min(self.sample_predictions_vector).item()
+        self.max_value = torch.max(self.sample_predictions_vector).item()
 
 def main():
+
+    #DESCRIPTOR BASED MODEL
     #training the descriptor based model
     print("Training time")
     for actual_epoch in tqdm(range(EPOCHS)):
@@ -181,14 +180,45 @@ def main():
     #evaluation of the descriptor based model
     print("Evaluation time")
     partial_loss, predicted_value, expected_value = evaluate(model,eval_loader, loss_fn)
+    predicted_value, expected_value = np.array(predicted_value), np.array(expected_value)
 
+    absolute_error = np.absolute(predicted_value - expected_value)
+    relative_error = (absolute_error/expected_value)*100
+
+    absolute_error_from_samples = np.reshape(absolute_error, (test_split_size, -1))
+    relative_error_from_samples = np.reshape(relative_error, (test_split_size, -1))
+
+    #saves in dict format to create dataframes
+    mean_absolute_error_from_samples = {}
+    for i in range(train_split_size, train_split_size + test_split_size):
+        mean_absolute_error_from_samples[f"sample_{i}"] = np.mean(absolute_error_from_samples[i])
+
+    mean_percentage_error_from_samples = {}
+    for i in rrange(train_split_size, train_split_size + test_split_size):
+        mean_percentage_error_from_samples[f"sample_{i}"] = np.mean(relative_error_from_samples[i])
+
+
+    #mean_absolute_error_from_samples = {f"sample_{i}": mean(value) for i, values in enumerate(absolute_error_from_samples)}
+    #mean_percentage_error_from_samples =  {f"sample_{i}": mean(value) for i, values in enumerate(relative_error_from_samples)}
+    print(mean_absolute_error_from_samples, mean_percentage_error_from_samples)
+
+    #creates a dataframe and then saves the xmls file
+    dataframe_mae = pd.DataFrame(mean_absolute_error_from_samples)
+    dataframe_mpe = pd.DataFrame(mean_percentage_error_from_samples)
+
+    #PMF BASED MODEL
     #evaluation of the pmf based model
-    estimation_func = AlkalinityEstimationFunction(checkpoint=os.path.join(os.path.dirname(_file_), "models", "reinjecao", "AlkalinityNetwork.ckpt")).to("cuda")
-    estimation_func.eval()
+    # estimation_func = AlkalinityEstimationFunction(checkpoint=os.path.join(os.path.dirname(_file_), "models", "reinjecao", "AlkalinityNetwork.ckpt")).to("cuda")
+    # estimation_func.eval()
 
-    pmf_model_prediction = []
-    for sample in Y_test_pmf_model:
-        prediction = estimation_func(calibrated_pmf = torch.as_tensor(sample.calibrated_pmf, dtype = torch.float32, device = "cuda"))
-        pmf_model_prediction.append(prediction)
+    # pmf_model_prediction = {}
+    # for i in range(train_split_size, train_split_size + test_split_size):  #takes only the test samples
+    #     prediction = estimation_func(calibrated_pmf = torch.as_tensor(Y_test_pmf_model[i].calibrated_pmf, dtype = torch.float32, device = "cuda"))
+    #     pmf_model_prediction[f"sample_{i}"] =  prediction
 
-        #TODO colocar erro absoluto e erro relativo para ambos modelos
+
+
+
+if __name__ == "__main__":
+    main()
+
