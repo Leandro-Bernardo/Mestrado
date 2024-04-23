@@ -20,7 +20,7 @@ else:
     device = "cuda"
 
 # variables
-EPOCHS = 1
+EPOCHS = 5
 LR = 0.0001
 BATCH_SIZE = 64
 EVALUATION_BATCH_SIZE = 1
@@ -201,7 +201,7 @@ def main():
     for i in range(0, sample_predicted_value.shape[0] - 1):
         stats = Statistics(sample_predicted_value[i], sample_expected_value[i])
         sample_stats_dict[f"sample_{i + train_split_size}"] = {
-                                                              "expected value": sample_expected_value[i],
+                                                              "expected value": np.unique(sample_expected_value[i])[0],
                                                               "mean": stats.mean,
                                                               "median": stats.median,
                                                               "mode": stats.mode,
