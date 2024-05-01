@@ -20,7 +20,7 @@ else:
     device = "cuda"
 
 # variables
-EPOCHS = 5
+EPOCHS = 1
 LR = 0.0001
 BATCH_SIZE = 64
 EVALUATION_BATCH_SIZE = 1
@@ -28,26 +28,37 @@ GRADIENT_CLIPPING_VALUE = 0.5
 MODEL_VERSION = 'model_1' #if len(os.listdir("./models")) == 0 else f'model_{len(os.listdir("./models"))}'
 DATASET_SPLIT = 0.8
 
-CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints")
-DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors")
-EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation")
+ANALYTE = 'Chloride'
+SKIP_BLANK = True
+PMF_MODEL_PATH = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}Network.ckpt")
+SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", f"{ANALYTE}_Samples")
+CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
+
+if SKIP_BLANK:
+    IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "no_blank")
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "no_blank")
+else:
+    IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "with_blank")
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank")
+
+
 LAST_CHECKPOINT = sorted(os.listdir(os.path.join(CHECKPOINT_ROOT, MODEL_VERSION)), key = lambda x: int(x.split('_')[-1]))[-1]
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, MODEL_VERSION, LAST_CHECKPOINT)
 
-ANALYTE = 'Alkalinity'
-PMF_MODEL_PATH = os.path.join(os.path.dirname(__file__), CHECKPOINT_ROOT, f"{ANALYTE}Network.ckpt")
-SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", f"{ANALYTE}_Samples" )
-CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
+list_files = os.listdir(DESCRIPTORS_ROOT)
+files_size = len(list_files)
+train_split_size = int((files_size // 2) * DATASET_SPLIT)
+test_split_size = int((files_size // 2) - train_split_size)
 
 print('Using this checkpoint:', CHECKPOINT_PATH)
 print('Using this official model:', PMF_MODEL_PATH)
 
 
 # loads data and splits into training and testing for the descriptor based model
-list_files = os.listdir(DESCRIPTORS_ROOT)
-files_size = len(list_files)
-train_split_size = int((files_size // 2) * DATASET_SPLIT)
-test_split_size = int((files_size // 2) - train_split_size)
 
 X_train_descriptors_model = torch.cat([torch.load(os.path.join(DESCRIPTORS_ROOT, f"sample_{i}")) for i in range(train_split_size)], dim=0).to(device=device)
 y_train_descriptors_model = torch.cat([torch.load(os.path.join(DESCRIPTORS_ROOT, f"sample_{i}_anotation")) for i in range(train_split_size)], dim=0).to(device=device)
@@ -74,24 +85,24 @@ del y_test_descriptors_model
 torch.cuda.empty_cache()
 
 
-# loads all data for the image pmf based model
-# Y_test_pmf_model = AlkalinitySampleDataset(
-#                                             base_dirs= SAMPLES_PATH,  #loads all data for processing
-#                                             progress_bar = True,
-#                                             skip_blank_samples = True,
-#                                             skip_incomplete_samples = True,
-#                                             skip_inference_sample= True,
-#                                             skip_training_sample = False,
-#                                             verbose = True
-#                                             )
+# process all data for the image pmf based model
+Y_test_pmf_model = AlkalinitySampleDataset(
+                                            base_dirs= SAMPLES_PATH,  #loads all data for processing
+                                            progress_bar = True,
+                                            skip_blank_samples = SKIP_BLANK,
+                                            skip_incomplete_samples = True,
+                                            skip_inference_sample= True,
+                                            skip_training_sample = False,
+                                            verbose = True
+                                            )
 
-# Y_test_pmf_model = ProcessedAlkalinitySampleDataset(
-#                                                     dataset = Y_test_pmf_model,
-#                                                     cache_dir = CACHE_PATH,
-#                                                     num_augmented_samples = 0,
-#                                                     progress_bar = True,
-#                                                     transform = None,
-#                                                     )
+Y_test_pmf_model = ProcessedAlkalinitySampleDataset(
+                                                    dataset = Y_test_pmf_model,
+                                                    cache_dir = CACHE_PATH,
+                                                    num_augmented_samples = 0,
+                                                    progress_bar = True,
+                                                    transform = None,
+                                                    )
 
 # descriptor model based definition
 model = torch.nn.Sequential(
@@ -155,6 +166,13 @@ def evaluate(model, eval_loader, loss_fn):
 
     return partial_loss, predicted_value, expected_value # ,accuracy
 
+def get_sample_identity(sample):
+    information = []
+    with open(os.path.join(IDENTITY_PATH, f"{sample}_identity.txt")) as f:
+        for line in f:
+            information.append(line)
+    datetime, id = information[0], information[1]
+    return datetime, id
 
 class Statistics():
 
@@ -182,7 +200,7 @@ class Statistics():
 def main():
 
     #DESCRIPTOR BASED MODEL
-    #training the descriptor based model
+    #trains the descriptor based model
     print("Training time")
     for actual_epoch in tqdm(range(EPOCHS)):
         train_loss = train_epoch(model, train_loader, optimizer, loss_fn)
@@ -200,7 +218,10 @@ def main():
     sample_stats_dict = {}
     for i in range(0, sample_predicted_value.shape[0] - 1):
         stats = Statistics(sample_predicted_value[i], sample_expected_value[i])
+        datetime, id = get_sample_identity(f"sample_{i+ train_split_size}")
         sample_stats_dict[f"sample_{i + train_split_size}"] = {
+                                                              "datetime": datetime,
+                                                              "identity": id,
                                                               "expected value": np.unique(sample_expected_value[i])[0],
                                                               "mean": stats.mean,
                                                               "median": stats.median,
@@ -211,13 +232,12 @@ def main():
                                                               "min": stats.min_value,
                                                               "max": stats.max_value,
                                                               "mean absolute error": stats.mae,
-                                                              "mean percentual error": stats.mpe,
+                                                              "mean relative error": stats.mpe,
                                                               "std mean absolute error": stats.std_mae,
-                                                              "std mean percentual error": stats.std_mpe
+                                                              "std mean relative error": stats.std_mpe
                                                              }
 
 
-    #print(sample_stats_dict["sample_600"])
 
     #creates a dataframe and then saves the xmls file
     df_stats = pd.DataFrame(sample_stats_dict).transpose()
@@ -227,7 +247,7 @@ def main():
 
     #PMF BASED MODEL
     #evaluation of the pmf based model
-    # estimation_func = AlkalinityEstimationFunction(checkpoint=os.path.join(os.path.dirname(_file_), "models", "reinjecao", "AlkalinityNetwork.ckpt")).to("cuda")
+    # estimation_func = AlkalinityEstimationFunction(checkpoint=os.path.join(os.path.dirname(__file__), "checkpoints", "AlkalinityNetwork.ckpt")).to("cuda")
     # estimation_func.eval()
 
     # pmf_model_prediction = {}
@@ -235,7 +255,7 @@ def main():
     #     prediction = estimation_func(calibrated_pmf = torch.as_tensor(Y_test_pmf_model[i].calibrated_pmf, dtype = torch.float32, device = "cuda"))
     #     pmf_model_prediction[f"sample_{i}"] =  prediction
 
-    print(" ")
+    # print(" ")
 
 
 

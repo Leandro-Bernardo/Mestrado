@@ -23,9 +23,18 @@ GRADIENT_CLIPPING_VALUE = 0.5
 MODEL_VERSION = 'model_1' #if len(os.listdir("./models")) == 0 else f'model_{len(os.listdir("./models"))}'
 DATASET_SPLIT = 0.8
 
-CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints")
-DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors")
-EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation")
+ANALYTE = 'Chloride'
+SKIP_BLANK = True
+
+if SKIP_BLANK:
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "no_blank")
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "no_blank")
+else:
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "with_blank")
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank")
+
 LAST_CHECKPOINT = sorted(os.listdir(os.path.join(CHECKPOINT_ROOT, MODEL_VERSION)), key = lambda x: int(x.split('_')[-1]))[-1]
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, MODEL_VERSION, LAST_CHECKPOINT)
 
@@ -214,7 +223,7 @@ def main():
 
         plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
                 s = f" mode:" )
-                
+
         plt.text(x = x_max + 210,  y=y_max - 10.78 * scale_factor,
                 s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
 

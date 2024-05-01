@@ -13,20 +13,29 @@ else:
     device = "cuda"
 
 # variables
+ANALYTE = "Chloride"
+SKIP_BLANK = False
+
 FIRST_EPOCH = 0
 FINAL_EPOCH = 5000
-LR = 0.0001
+LR = 0.01
 BATCH_SIZE = 64
 GRADIENT_CLIPPING_VALUE = 0.5
 CHECKPOINT_SAVE_INTERVAL = 25
-MODEL_VERSION = 'model_1'
+MODEL_VERSION = 'model_3'
 DATASET_SPLIT = 0.8
-USE_CHECKPOINT = True
+USE_CHECKPOINT = False
+
 
 #defines path dir
-CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints")
-DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors")
-LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values")
+if SKIP_BLANK:
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "no_blank")
+    LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "no_blank")
+else:
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "with_blank")
+    LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "with_blank")
 
 
 # creates directories
