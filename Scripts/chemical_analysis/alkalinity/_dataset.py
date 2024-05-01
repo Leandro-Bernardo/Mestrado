@@ -13,7 +13,7 @@ class AlkalinitySampleDataset(SampleDataset):
         return [
             self._parse_auxiliary_solution("Reagente", raw_sample["colorReagent"]),
         ]
-    
+
     def _parse_values(self, raw_sample: Dict[str, Any]) -> Tuple[Optional[float], Optional[float], str]:
         return (
             raw_sample["sourceStock"].get("alkalinity", None),
@@ -28,7 +28,7 @@ class ProcessedAlkalinitySampleDataset(ProcessedSampleDataset):
         self._alkalinity_values = self.get_samples()
 
     @property
-    def alkalinity_values(self):
+    def analyte_values(self):
         return self._alkalinity_values
 
     def _compute_masks(self, bgr_img: np.ndarray, lab_img: np.ndarray, chamber_type: ChamberType) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
