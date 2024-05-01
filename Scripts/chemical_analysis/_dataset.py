@@ -130,7 +130,7 @@ class SampleDataset(SizedDataset[Sample]):
             name=raw_solution["name"].strip(),
             components=[self._parse_auxiliary_solution_component(raw_component) for raw_component in raw_solution["components"]]
         )
-    
+
     def _parse_auxiliary_solution_component(self, raw_component: Dict[str, Any]) -> AuxiliarySolutionComponent:
         return AuxiliarySolutionComponent(
             name=raw_component["name"].strip(),
@@ -139,7 +139,7 @@ class SampleDataset(SizedDataset[Sample]):
             function=SOLUTION_COMPONENT_FUNCTIONS[raw_component["function"]],
             batch=raw_component["batch"].strip()
         )
-    
+
     def _parse_sample(self, raw_record: Dict[str, Any], record_path: str, *, verbose: bool) -> Sample:
         dirname, _ = os.path.split(record_path)
         # Check the extra image files.
@@ -239,7 +239,7 @@ class SampleDataset(SizedDataset[Sample]):
             concentrationUnit=UNITS[raw_component["concentrationUnit"]],
             batch=raw_component["batch"].strip()
         )
-    
+
     def _parse_stock_aliquot(self, raw_aliquot: Dict[str, Any]) -> StockAliquot:
         return StockAliquot(
             name=raw_aliquot["name"].strip(),
@@ -252,7 +252,7 @@ class SampleDataset(SizedDataset[Sample]):
     @abstractmethod
     def _parse_auxiliary_solutions(self, raw_sample: Dict[str, Any]) -> List[AuxiliarySolution]:
         raise NotImplementedError  # To be implemented by the subclass.
-    
+
     @abstractmethod
     def _parse_values(self, raw_sample: Dict[str, Any]) -> Tuple[Optional[float], Optional[float], str]:
         raise NotImplementedError  # To be implemented by the subclass.
@@ -286,7 +286,7 @@ class ExpandedSampleDataset(SizedDataset[Sample]):
 
     def __getitem__(self, index: int) -> Sample:
         return self._samples[index]
-    
+
     def __len__(self) -> int:
         return len(self._samples)
 
@@ -315,7 +315,7 @@ class ProcessedSample:
                     if bgr_img is None:
                         raise RuntimeError(f'Can\'t load the file "{original_path}"')
                     if not cv2.imwrite(path, transform(image=bgr_img)["image"]):
-                        raise RuntimeError(f'Can\'t save the file "{path}"') 
+                        raise RuntimeError(f'Can\'t save the file "{path}"')
             self._bgr_img_ext[prefix] = ext
         # Set sample.
         self.sample: Final[Sample] = sample
@@ -326,6 +326,9 @@ class ProcessedSample:
         self._root_dir = root_dir
         # Set sample's prefix and BGR images.
         self.sample_prefix: Final[str] = f'{os.path.splitext(os.path.basename(sample["fileName"]))[0]}{postfix}'
+        # added to identify date and analyst name
+        self.identifier: Final[str] = str(sample["datetime"].year)+' '+str(sample["datetime"].month)+' '+str(sample["datetime"].day)+' '+sample["analystName"]
+
         make_bgr_image(self.sample_prefix, sample["fileName"])
         # Set blank's prefix and BGR images.
         if sample["blankFileName"] is not None and os.path.isfile(sample["blankFileName"]):
@@ -341,7 +344,7 @@ class ProcessedSample:
         if bgr_img is None:
             raise RuntimeError(f'Can\'t load the file "{path}"')
         return bgr_img
-    
+
     def _lab_image(self, prefix: str) -> np.ndarray:
         path = self._path(prefix, "lab_img", ".npz")
         if os.path.isfile(path):
@@ -350,7 +353,7 @@ class ProcessedSample:
             lab_img = bgr_to_lab(self._bgr_image(prefix))
             np.savez_compressed(path, lab_img)
         return lab_img
-    
+
     def _mask(self, prefix: str, key: str) -> np.ndarray:
         data: Dict[str, np.ndarray] = dict()
         path = self._path(prefix, key, ".npz")
@@ -361,7 +364,7 @@ class ProcessedSample:
             for name, value in data.items():
                 np.savez_compressed(self._path(prefix, name, ".npz"), value)
         return data[key]
-        
+
     def _path(self, prefix: str, key: Optional[str], ext: str) -> str:
         return os.path.join(self._root_dir, f'{prefix}{f"_{key}" if key is not None else ""}{ext}')
 
@@ -379,28 +382,28 @@ class ProcessedSample:
             np.savez_compressed(self._path(prefix, "pmf", ".npz"), data["pmf"])
             np.savez_compressed(self._path(prefix, "img_to_pmf", ".npz"), img_ind=data["img_to_pmf"][0], pmf_ind=data["img_to_pmf"][1])
         return data[key]
-    
+
 
     @property
     def blank_analyte_mask(self) -> np.ndarray:
         assert self.blank_prefix is not None
         return self._mask(self.blank_prefix, "analyte_msk")
-    
+
     @property
     def blank_bgr_image(self) -> np.ndarray:
         assert self.blank_prefix is not None
         return self._bgr_image(self.blank_prefix)
-    
+
     @property
     def blank_bright_mask(self) -> np.ndarray:
         assert self.blank_prefix is not None
         return self._mask(self.blank_prefix, "bright_msk")
-    
+
     @property
     def blank_grid_mask(self) -> np.ndarray:
         assert self.blank_prefix is not None
         return self._mask(self.blank_prefix, "grid_msk")
-    
+
     @property
     def blank_image_to_pmf(self) -> Tuple[np.ndarray, np.ndarray]:
         assert self.blank_prefix is not None
@@ -439,19 +442,19 @@ class ProcessedSample:
     @property
     def sample_analyte_mask(self) -> np.ndarray:
         return self._mask(self.sample_prefix, "analyte_msk")
-    
+
     @property
     def sample_bgr_image(self) -> np.ndarray:
         return self._bgr_image(self.sample_prefix)
-    
+
     @property
     def sample_bright_mask(self) -> np.ndarray:
         return self._mask(self.sample_prefix, "bright_msk")
-    
+
     @property
     def sample_grid_mask(self) -> np.ndarray:
         return self._mask(self.sample_prefix, "grid_msk")
-    
+
     @property
     def sample_image_to_pmf(self) -> Tuple[np.ndarray, np.ndarray]:
         return self._pmf(self.sample_prefix, "img_to_pmf") # type: ignore
@@ -467,6 +470,9 @@ class ProcessedSample:
     @property
     def sample_pmf(self) -> np.ndarray:
         return self._pmf(self.sample_prefix, "pmf") # type: ignore
+
+    def sample_prefix(self) -> str:
+        return self.sample_prefix
 
 
 class ProcessedSampleDataset(SizedDataset[ProcessedSample]):
@@ -502,13 +508,13 @@ class ProcessedSampleDataset(SizedDataset[ProcessedSample]):
 
     def get_samples(self):
         return self.samples
-    
+
     def __getitem__(self, index: int) -> ProcessedSample:
         return self._processed_samples[index]
 
     def __len__(self) -> int:
         return len(self._processed_samples)
-    
+
 
     @abstractmethod
     def _compute_masks(self, bgr_img: np.ndarray, lab_img: np.ndarray, chamber_type: ChamberType) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -536,7 +542,7 @@ class ProcessedSampleDataset(SizedDataset[ProcessedSample]):
                 used_axis = np.argwhere(np.logical_or.reduce(used_msk, axis=axis, initial=None))
                 bounds.append((int(np.min(used_axis)), int(np.max(used_axis))))
         return tuple(bounds), (min_prob, max_prob)
-    
+
     def compute_true_value_statistics(self) -> Dict[str, float]:
         values = np.asarray([processed_sample.sample["correctedTheoreticalValue"] for processed_sample in self._processed_samples if processed_sample.sample["correctedTheoreticalValue"] is not None], dtype=np.float32)
         median = np.median(values)
