@@ -11,8 +11,10 @@ Scripts/teste.ipynb
 ./cache_dir
 ./images
 Scripts/testes.ipynb
-
-descriptors/
+
+
+descriptors/
+
 
 descriptors/
 
@@ -35,3 +37,11 @@ Scripts/evaluation(825 epoch)/error_from_image/from_cnn1_output/model_1/
 Scripts/evaluation(825 epoch)/error_from_image/from_original_image/model_1/
 
 *.png
+
+Alkalinity_Samples/
+
+Chloride_Samples/
+
+Phosphate_Samples/
+
+Sulfate_Samples/
