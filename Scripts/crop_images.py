@@ -15,16 +15,26 @@ from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideS
 #variables
 ANALYTE = "Chloride"
 SKIP_BLANK = False
+SKIP_SEPARATED_BLANK_FILES = True
 
 SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", f"{ANALYTE}_Samples")
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
-if SKIP_BLANK:
+if SKIP_BLANK == True and SKIP_SEPARATED_BLANK_FILES == True:  #dont use blanks nor separated blanks
     SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank")
     TRAIN_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Train_Test_Samples", f"{ANALYTE}", "no_blank")
-else:
+
+elif SKIP_BLANK == False and SKIP_SEPARATED_BLANK_FILES == True: # use blanks, ignore separated blank files
     SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank")
     TRAIN_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Train_Test_Samples", f"{ANALYTE}", "with_blank")
+
+elif SKIP_BLANK == False and SKIP_SEPARATED_BLANK_FILES == False: # use separated blanks
+    SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", "blank_files", f"{ANALYTE}")
+    SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank")
+    TRAIN_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Train_Test_Samples", f"{ANALYTE}", "processed_blank")
+
+else:
+    print("Missmatch combinations \n SKIP_BLANK must be False for use separated blanks")
 
 #makes path dir
 os.makedirs(SAVE_PATH, exist_ok = True)
@@ -59,15 +69,24 @@ samples = SampleDataset(
     verbose = True
 )
 
-processed_samples = ProcessedSampleDataset(
+if ANALYTE == "Alkalinity":
+    processed_samples = ProcessedSampleDataset(
     dataset = samples,
     cache_dir = CACHE_PATH,
     num_augmented_samples = 0,
     progress_bar = True,
-    transform = None,
-    lab_mean= pca_stats[f"{ANALYTE}"]['lab_mean'],
-    lab_sorted_eigenvectors = pca_stats[f"{ANALYTE}"]['lab_sorted_eigenvectors']
-)
+    transform = None, )
+
+elif ANALYTE == "Chloride":
+    processed_samples = ProcessedSampleDataset(
+        dataset = samples,
+        cache_dir = CACHE_PATH,
+        num_augmented_samples = 0,
+        progress_bar = True,
+        transform = None,
+        lab_mean= pca_stats[f"{ANALYTE}"]['lab_mean'],
+        lab_sorted_eigenvectors = pca_stats[f"{ANALYTE}"]['lab_sorted_eigenvectors'])
+
 
 #centered crop
 count_of_valid_samples = 0
@@ -99,14 +118,18 @@ for i, _ in enumerate(processed_samples):
 
         #saves analyte identifier
         with open(f"{SAVE_PATH}/sample_{count_of_valid_samples}_identity.txt", "w", encoding='utf-8') as f:
-            json.dump(processed_samples[i].identifier, f, ensure_ascii=False, indent=4)
+            json.dump(processed_samples[i].datetime, f, ensure_ascii=False, indent=4)
+            f.write('\n')
+            json.dump(processed_samples[i].analyst_name, f, ensure_ascii=False, indent=4)
             f.write('\n')
             json.dump(processed_samples[i].sample_prefix, f, ensure_ascii=False, indent=4)
+            f.write('\n')
+            json.dump(processed_samples[i].blank_prefix, f, ensure_ascii=False, indent=4)
 
         count_of_valid_samples+=1
 
     except:
-        print(f"Imagem problematica : {processed_samples[i].identifier},{processed_samples[i].sample_prefix}")
+        print(f"Imagem problematica : {processed_samples[i].analyst_name} {processed_samples[i].datetime}, sample:  {processed_samples[i].sample_prefix}")
 
 
 
