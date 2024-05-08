@@ -327,7 +327,8 @@ class ProcessedSample:
         # Set sample's prefix and BGR images.
         self.sample_prefix: Final[str] = f'{os.path.splitext(os.path.basename(sample["fileName"]))[0]}{postfix}'
         # added to identify date and analyst name
-        self.identifier: Final[str] = str(sample["datetime"].year)+' '+str(sample["datetime"].month)+' '+str(sample["datetime"].day)+' '+sample["analystName"]
+        self.datetime: Final[str] = str(sample["datetime"])
+        self.analyst_name: Final[str] = sample["analystName"]
 
         make_bgr_image(self.sample_prefix, sample["fileName"])
         # Set blank's prefix and BGR images.
