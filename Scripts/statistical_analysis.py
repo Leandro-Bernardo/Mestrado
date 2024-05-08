@@ -3,6 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
+import scipy
 
 from tqdm import tqdm
 #from sklearn.model_selection import train_test_split
@@ -15,22 +16,38 @@ else:
     device = "cuda"
 
 # variables
-EPOCHS = 5
-LR = 0.0001
-BATCH_SIZE = 64
-EVALUATION_BATCH_SIZE = 1
-GRADIENT_CLIPPING_VALUE = 0.5
-MODEL_VERSION = 'model_1' #if len(os.listdir("./models")) == 0 else f'model_{len(os.listdir("./models"))}'
-DATASET_SPLIT = 0.8
+ANALYTE = "Chloride"
+SKIP_BLANK = False
 
-ANALYTE = 'Chloride'
-SKIP_BLANK = True
+if ANALYTE == "Alkalinity":
+    EPOCHS = 1
+    LR = 0.001
+    BATCH_SIZE = 64
+    EVALUATION_BATCH_SIZE = 64
+    GRADIENT_CLIPPING_VALUE = 0.5
+    CHECKPOINT_SAVE_INTERVAL = 25
+    MODEL_VERSION = 'model_1'
+    DATASET_SPLIT = 0.8
+    USE_CHECKPOINT = True
+
+elif ANALYTE == "Chloride":
+    EPOCHS = 1
+    LR = 0.001
+    BATCH_SIZE = 64
+    EVALUATION_BATCH_SIZE = 64
+    GRADIENT_CLIPPING_VALUE = 0.5
+    CHECKPOINT_SAVE_INTERVAL = 25
+    MODEL_VERSION = 'model_3'
+    DATASET_SPLIT = 0.8
+    USE_CHECKPOINT = False
 
 if SKIP_BLANK:
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "no_blank")
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "no_blank")
+
 else:
+    IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank")
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "with_blank")
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank")
@@ -78,17 +95,35 @@ del y_test
 torch.cuda.empty_cache()
 
 # model definition
-model = torch.nn.Sequential(
-    torch.nn.Linear(in_features=448, out_features=256),
-    torch.nn.ReLU(),
-    torch.nn.Linear(in_features=256, out_features=128),
-    torch.nn.ReLU(),
-    torch.nn.Linear(in_features=128, out_features=64),
-    torch.nn.ReLU(),
-    torch.nn.Linear(in_features=64, out_features=32),
-    torch.nn.ReLU(),
-    torch.nn.Linear(in_features=32, out_features=1)
-).to(device=device)
+if ANALYTE == "Alkalinity":
+    model = torch.nn.Sequential(
+        torch.nn.Linear(in_features=448, out_features=256),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=256, out_features=128),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=128, out_features=64),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=64, out_features=32),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=32, out_features=1)
+                                ).to(device=device)
+
+elif ANALYTE == "Chloride":
+    model = torch.nn.Sequential(
+        torch.nn.Linear(in_features=1472, out_features=1024),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=1024, out_features=512),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=512, out_features=256),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=256, out_features=124),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=124, out_features=64),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=64, out_features=32),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=32, out_features=1)
+                                ).to(device=device)
 
 loss_fn = torch.nn.MSELoss()
 optimizer = torch.optim.SGD(params=model.parameters(), lr=LR)
@@ -140,18 +175,27 @@ def evaluate(model, eval_loader, loss_fn):
     return partial_loss, predicted_value, expected_value # ,accuracy
 
 
+
 class Statistics():
 
-    def __init__(self, sample_predictions_vector):
+    def __init__(self, sample_predictions_vector, sample_expected_value):
         self.sample_predictions_vector = torch.tensor(sample_predictions_vector, dtype=torch.float32)
+        self.sample_expected_value = torch.tensor(sample_expected_value, dtype=torch.float32)
+
         self.mean = torch.mean(self.sample_predictions_vector).item()
         self.median = torch.median(self.sample_predictions_vector).item()
-        self.mode = scipy.stats.mode(self.sample_predictions_vector.numpy(), axis = None)[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
+        self.mode = scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
         self.variance = torch.var(self.sample_predictions_vector).item()
         self.std = torch.std(self.sample_predictions_vector).item()
-        self.mad = scipy.stats.median_abs_deviation(self.sample_predictions_vector.numpy())
+        self.mad = scipy.stats.median_abs_deviation(np.array(sample_predictions_vector).flatten())
         self.min_value = torch.min(self.sample_predictions_vector).item()
         self.max_value = torch.max(self.sample_predictions_vector).item()
+        self.absolute_error = torch.absolute(self.sample_predictions_vector - self.sample_expected_value)
+        self.relative_error = (self.absolute_error/self.sample_expected_value)*100
+        self.mae = torch.mean(self.absolute_error).item()
+        self.mpe = torch.mean(self.relative_error).item()
+        self.std_mae = torch.std(self.absolute_error).item()
+        self.std_mpe = torch.std(self.relative_error).item()
 
 def write_pdf_statistics():
     pass
@@ -182,11 +226,12 @@ def main():
     expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, 94, 94)))}
 
     for i in range(int(len(eval_loader)/(94*94))):
-        values = predicted_value_for_samples[f'sample_{i}']
-        stats = Statistics(predicted_value_for_samples[f'sample_{i}'])
+        values = np.array(predicted_value_for_samples[f'sample_{i}']).flatten() #flattens for histogram calculation
+        stats = Statistics(predicted_value_for_samples[f'sample_{i}'], expected_value_from_samples[f'sample_{i}'])
         plt.figure(figsize=(15, 8))
 
-        plt.hist(values, edgecolor ='black')
+        counts, bins = np.unique(values, return_counts = True)
+        plt.hist(values, bins=len(bins), color='black')
 
         # adds vertical lines for basic statistic values
         plt.axvline(x = stats.mean, alpha = 0.5, c = 'red')
@@ -206,25 +251,29 @@ def main():
 
         # Defines a scale factor for positions in y axis
         scale_factor = 0.08 * y_max
-
-
+        if ANALYTE == "Alkalinity":
+            text = 210
+            text_median = 240
+        if ANALYTE == "Chloride":
+            text = 10000
+            text_median = 12000
         #text settings
         plt.text(x = x_max+0.5,  y=y_max - 10.20 * scale_factor,
                 s = f" mean:")
 
-        plt.text(x = x_max + 210, y=y_max - 10.20 * scale_factor,
+        plt.text(x = x_max + text, y=y_max - 10.20 * scale_factor,
                 s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
 
         plt.text(x = x_max ,  y=y_max - 10.49 * scale_factor,
                 s = f" median:" )
 
-        plt.text(x = x_max + 240, y=y_max - 10.49 * scale_factor,
+        plt.text(x = x_max + text_median, y=y_max - 10.49 * scale_factor,
                 s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
 
         plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
                 s = f" mode:" )
 
-        plt.text(x = x_max + 210,  y=y_max - 10.78 * scale_factor,
+        plt.text(x = x_max + text,  y=y_max - 10.78 * scale_factor,
                 s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
 
         plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
@@ -252,7 +301,7 @@ def main():
     partial_loss_from_original_image = np.array(partial_loss_from_original_image) #to optimize computing
 
     for i in range(len(partial_loss_from_original_image)):
-        original_image = cv2.imread(os.path.join(os.path.dirname(__file__),"..", "images", f"sample_{i + train_split_size}.png"))
+        original_image = cv2.imread(os.path.join(ORIGINAL_IMAGE_ROOT, f"sample_{i + train_split_size}.png"))
         original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
         original_image = original_image[9 : original_image.shape[0] - 9,  9 : original_image.shape[1] - 9,:] # cropps the image to match the cropped image after 3rd cnn
 
