@@ -1,82 +1,122 @@
-import os
+import chemical_analysis as ca
+import matplotlib.pyplot as plt
 import cv2
-import torch
-import torchvision
+import numpy as np
+import json
+import os
 
-from torchvision.models.feature_extraction import get_graph_node_names
-from torchvision.models import vgg11
-#from torchsummary import summary
-from torchvision.models.feature_extraction import create_feature_extractor
+from typing import Tuple, List, Dict, Any
+from tqdm import tqdm
+from chemical_analysis.alkalinity import AlkalinitySampleDataset, ProcessedAlkalinitySampleDataset
+from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideSampleDataset
+#from chemical_analysis.sulfate import SulfateSampleDataset, ProcessedSulfateSampleDataset
+#from chemical_analysis.phosphate import PhosphateSampleDataset, ProcessedPhosphateSampleDataset
 
-# Variables
+#variables
 ANALYTE = "Chloride"
 SKIP_BLANK = False
 
+SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", f"{ANALYTE}_Samples")
+CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
+
 if SKIP_BLANK:
-    os.makedirs(os.path.join("..", "descriptors", f"{ANALYTE}", "no_blank"), exist_ok = True)
-    LOAD_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank"))
-    SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "no_blank")
+    SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank")
+    TRAIN_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Train_Test_Samples", f"{ANALYTE}", "no_blank")
 else:
-    os.makedirs(os.path.join("..", "descriptors", f"{ANALYTE}", "with_blank"), exist_ok = True)
-    LOAD_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank"))
-    SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "with_blank")
+    SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank")
+    TRAIN_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Train_Test_Samples", f"{ANALYTE}", "with_blank")
 
-# load images
-cropped_images = []
-
-for i in range(int(len(os.listdir(LOAD_PATH))/3)):
-        cropped_images.append(cv2.imread(os.path.join(LOAD_PATH, f"sample_{i}.png")))
-
-#print(summary(vgg11(), (3, 224, 224)))
-
-#cria o symbolic trace do torch.FX
-train_nodes, eval_nodes = get_graph_node_names(vgg11())
-#print(train_nodes)
-
-feature_list = ['features.2', 'features.5', 'features.10']
-
-#cria o extrator de caracteristicas
-feature_extraction = create_feature_extractor(
-                                              model = vgg11(),
-                                              return_nodes= feature_list
-                                              )
-
-# extract the features
-
-image_tensor = {}
-
-for i, _ in enumerate(cropped_images):
-    img_choice = cv2.cvtColor(cropped_images[i].astype('uint8'),cv2.COLOR_BGR2RGB) # escolhe uma imagem
-
-    img_choice = torch.from_numpy(img_choice).permute(2, 0, 1).unsqueeze(0).float()  # converte a imagem para o formato de tensor
-
-    with torch.no_grad():
-        image_tensor[f"sample_{i}"] = feature_extraction(img_choice)  # dada imagem, extrai as caracteristicas de todas camadas da vgg
+#makes path dir
+os.makedirs(SAVE_PATH, exist_ok = True)
+os.makedirs(CACHE_PATH, exist_ok = True)
+os.makedirs(TRAIN_TEST_PATH, exist_ok = True)
 
 
-# extract the features from all images
+dataset_processor = {"Alkalinity":{"dataset": AlkalinitySampleDataset, "processed_dataset": ProcessedAlkalinitySampleDataset},
+                     "Chloride": {"dataset": ChlorideSampleDataset, "processed_dataset": ProcessedChlorideSampleDataset},
+                     #"Sulfate": {"dataset": SulfateSampleDataset, "processed_dataset": ProcessedSulfateSampleDataset},
+                     #"Phosphate": {"dataset": PhosphateSampleDataset, "processed_dataset": ProcessedPhosphateSampleDataset},
+                    }
 
-for sample_key, sample in image_tensor.items():  #extrai caracteristicas das camadas de convolucao desejadas (primeira, segunda e terceira)
-    print(f"Amostra atual : {sample_key}")
-    features2 = sample['features.2'][0]
-    features5 = sample['features.5'][0]
-    features10 = sample['features.10'][0]
+pca_stats = {
+             #"Alkalinity": {"lab_mean": np.load(ca.alkalinity.PCA_STATS)['lab_mean'], "lab_sorted_eigenvectors": np.load(ca.alkalinity.PCA_STATS)['lab_sorted_eigenvectors']},
+             "Chloride"  : {"lab_mean": np.load(ca.chloride.PCA_STATS)['lab_mean']  , "lab_sorted_eigenvectors": np.load(ca.chloride.PCA_STATS)['lab_sorted_eigenvectors']},
+             #"Sulfate"   : {"lab_mean": np.load(ca.sulfate.PCA_STATS)['lab_mean']   , "lab_sorted_eigenvectors": np.load(ca.sulfate.PCA_STATS)['lab_sorted_eigenvectors']},
+             #"Phosphate" : {"lab_mean": np.load(ca.phosphate.PCA_STATS)['lab_mean'] , "lab_sorted_eigenvectors": np.load(ca.phosphate.PCA_STATS)['lab_sorted_eigenvectors']}
+            }
 
-    heigh, width = features2.shape[1], features2.shape[2]
+SampleDataset = dataset_processor[f"{ANALYTE}"]["dataset"]
+ProcessedSampleDataset = dataset_processor[f"{ANALYTE}"]["processed_dataset"]
 
-    #reescala os mapas de caracteristicas da segunda e da terceira camada para o tamanho da primeira camada
-    features5_rescaled = torchvision.transforms.Resize((heigh, width),torchvision.transforms.InterpolationMode.NEAREST)(features5)    #reescala output da segunda camada
-    features10_rescaled = torchvision.transforms.Resize((heigh, width), torchvision.transforms.InterpolationMode.NEAREST)(features10) #reescala output da terceira camada
+#data preprocessing
+samples = SampleDataset(
+    base_dirs = SAMPLES_PATH,
+    progress_bar = True,
+    skip_blank_samples = SKIP_BLANK,
+    skip_incomplete_samples = True,
+    skip_inference_sample= True,
+    skip_training_sample = False,
+    verbose = True
+)
 
-    #concatena todas as imagens em um unico tensor e faz o cropp baseado no campo receptivo da terceira camada (22 x 22)
-    sample_features = torch.cat((features2, features5_rescaled, features10_rescaled), dim=0)                       # shape: 448 , 112, 112
-    sample_features = sample_features[:, 9 : sample_features.shape[1] - 9,  9 : sample_features.shape[2] - 9]  # shape: 448 ,  90,  90
-    sample_features = torch.flatten(torch.permute(sample_features, (1, 2, 0)), start_dim=0, end_dim=1)  # flatten    shape: num_vectors, num_channels
+processed_samples = ProcessedSampleDataset(
+    dataset = samples,
+    cache_dir = CACHE_PATH,
+    num_augmented_samples = 0,
+    progress_bar = True,
+    transform = None,
+    lab_mean= pca_stats[f"{ANALYTE}"]['lab_mean'],
+    lab_sorted_eigenvectors = pca_stats[f"{ANALYTE}"]['lab_sorted_eigenvectors']
+)
 
-    #le o valor de alcalinidade (dado) e expande a dimensão (atualmente 1d) para o tamanho do descritor da sua respectiva imagem
-    sample_theoretical_value = torch.tensor(float(open(os.path.join(LOAD_PATH, f"{sample_key}.txt")).read())).expand(len(sample_features))
+#centered crop
+count_of_valid_samples = 0
+for i, _ in enumerate(processed_samples):
+    try:
+        print(f"Imagem {i}")
 
-    torch.save(sample_features, os.path.join(SAVE_PATH, f"{sample_key}"))
-    torch.save(sample_theoretical_value, os.path.join(SAVE_PATH, f"{sample_key}_anotation"))
+        #gets the mask for that sample
+        mask =  processed_samples[i].sample_analyte_mask
+
+        nonzero_rows, nonzero_cols = np.nonzero(mask)
+        min_row, max_row = min(nonzero_rows), max(nonzero_rows)
+        min_col, max_col = min(nonzero_cols), max(nonzero_cols)
+
+        #cropp based on mask
+        actual_image = processed_samples[i].sample_bgr_image[min_row:max_row, min_col:max_col]
+
+        image_heigth, image_width = actual_image.shape[0], actual_image.shape[1]
+
+        #cropp for vgg input
+        cropped_image = actual_image[int(image_heigth/2)-112:int(image_heigth/2)+112, int(image_width/2)-112:int(image_width/2)+112]
+
+        #saves images
+        plt.imsave(f"{SAVE_PATH}/sample_{count_of_valid_samples}.png", cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)/255)
+
+        #saves analyte value
+        with open(f"{SAVE_PATH}/sample_{count_of_valid_samples}.txt", "w", encoding='utf-8') as f:
+            json.dump(processed_samples.analyte_values[i]['theoreticalValue'], f, ensure_ascii=False, indent=4)
+
+        #saves analyte identifier
+        with open(f"{SAVE_PATH}/sample_{count_of_valid_samples}_identity.txt", "w", encoding='utf-8') as f:
+            json.dump(processed_samples[i].identifier, f, ensure_ascii=False, indent=4)
+            f.write('\n')
+            json.dump(processed_samples[i].sample_prefix, f, ensure_ascii=False, indent=4)
+
+        count_of_valid_samples+=1
+
+    except:
+        print(f"Imagem problematica : {processed_samples[i].identifier},{processed_samples[i].sample_prefix}")
 
 
+
+#DISABLED
+#save images for train test of pmf based model
+# for i, _ in enumerate(processed_samples):
+#     #saves images
+#     plt.imsave(f"{TRAIN_TEST_PATH}/sample_{i}.png", cv2.cvtColor(processed_samples[i].sample_bgr_image, cv2.COLOR_BGR2RGB)/255)
+#     #saves jsons
+#     with open(f"{TRAIN_TEST_PATH}/sample_{i}.txt", "w", encoding='utf-8') as f:
+#         json.dump(processed_samples.alkalinity_values[i]['theoreticalValue'],f, ensure_ascii=False, indent=4)
+
+#     print(f"sample_{i} finished!")
