@@ -13,22 +13,22 @@ from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideS
 #from chemical_analysis.phosphate import PhosphateSampleDataset, ProcessedPhosphateSampleDataset
 
 #variables
-ANALYTE = "Chloride"
-SKIP_BLANK = False
-SKIP_SEPARATED_BLANK_FILES = True
+ANALYTE = "Alkalinity"
+SKIP_BLANK = True
+PROCESS_SEPARATED_BLANK_FILES = True
 
 SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", f"{ANALYTE}_Samples")
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
-if SKIP_BLANK == True and SKIP_SEPARATED_BLANK_FILES == True:  #dont use blanks nor separated blanks
+if SKIP_BLANK == True and PROCESS_SEPARATED_BLANK_FILES == True:  #dont use blanks nor separated blanks
     SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank")
     TRAIN_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Train_Test_Samples", f"{ANALYTE}", "no_blank")
 
-elif SKIP_BLANK == False and SKIP_SEPARATED_BLANK_FILES == True: # use blanks, ignore separated blank files
+elif SKIP_BLANK == False and PROCESS_SEPARATED_BLANK_FILES == True: # use blanks, ignore separated blank files
     SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank")
     TRAIN_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Train_Test_Samples", f"{ANALYTE}", "with_blank")
 
-elif SKIP_BLANK == False and SKIP_SEPARATED_BLANK_FILES == False: # use separated blanks
+elif SKIP_BLANK == False and PROCESS_SEPARATED_BLANK_FILES == False: # use separated blanks
     SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", "blank_files", f"{ANALYTE}")
     SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank")
     TRAIN_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Train_Test_Samples", f"{ANALYTE}", "processed_blank")
@@ -122,9 +122,12 @@ for i, _ in enumerate(processed_samples):
             f.write('\n')
             json.dump(processed_samples[i].analyst_name, f, ensure_ascii=False, indent=4)
             f.write('\n')
-            json.dump(processed_samples[i].sample_prefix, f, ensure_ascii=False, indent=4)
+            json.dump(processed_samples[i].sample_prefix + '.jpg', f, ensure_ascii=False, indent=4)
             f.write('\n')
-            json.dump(processed_samples[i].blank_prefix, f, ensure_ascii=False, indent=4)
+            try:
+                json.dump(processed_samples[i].blank_prefix + '.jpg', f, ensure_ascii=False, indent=4)
+            except:
+                json.dump(processed_samples[i].blank_prefix, f, ensure_ascii=False, indent=4)
 
         count_of_valid_samples+=1
 

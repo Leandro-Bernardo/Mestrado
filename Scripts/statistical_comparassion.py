@@ -7,6 +7,7 @@ import chemical_analysis as ca
 import shutil
 import pandas as pd
 import scipy
+import math
 
 from tqdm import tqdm
 #from sklearn.model_selection import train_test_split
@@ -30,7 +31,7 @@ SKIP_SEPARATED_BLANK_FILES = False
 USE_CHECKPOINT = True
 
 if ANALYTE == "Alkalinity":
-    EPOCHS = 10
+    EPOCHS = 3
     LR = 0.001
     BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 1
@@ -40,7 +41,7 @@ if ANALYTE == "Alkalinity":
     DATASET_SPLIT = 0.8
 
 elif ANALYTE == "Chloride":
-    EPOCHS = 1
+    EPOCHS = 3
     LR = 0.001
     BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 1
@@ -332,6 +333,7 @@ def main():
             stats = Statistics(blank_predicted_value[i], blank_expected_value[i])
             datetime, analyst_name, sample_prefix, blank_filename = get_sample_identity(f"sample_{i}", BLANK_IDENTITY_PATH)
             blank_stats_dict[sample_prefix] = {
+                                               "expected value": np.unique(blank_expected_value[i])[0],
                                                "mean": stats.mean,
                                                "median": stats.median,
                                                "mode": stats.mode,
@@ -374,11 +376,12 @@ def main():
     if SKIP_SEPARATED_BLANK_FILES == False:
         blank_df = pd.DataFrame(blank_stats_dict).transpose()
         for id in df_stats.index:
-            blank_file_name = df_stats.loc[id]['blank_id']
-            blank_file_name = df_stats.loc[id]['blank_id']
-            df_stats.loc[id]["mean"] = df_stats.loc[id]["mean"] - blank_df.loc[blank_file_name]["mean"]
-            df_stats.loc[id]["median"] = df_stats.loc[id]["median"] - blank_df.loc[blank_file_name]["median"]
-        blank_df.to_excel(os.path.join(f"{SAVE_BLANK_EXCEL_PATH}, ", "blank_statistics.xlsx"))
+            blank_file_name = df_stats.loc[id, 'blank_id']
+            df_stats.loc[id, "mean"] = df_stats.loc[id, "mean"] - blank_df.loc[blank_file_name, "mean"]
+            df_stats.loc[id, "median"] = df_stats.loc[id, "median"] - blank_df.loc[blank_file_name, "median"]
+            df_stats.loc[id, "variance"] = df_stats.loc[id, "variance"] + blank_df.loc[blank_file_name, "variance"]  #Var(X-Y) = Var(X) + Var(Y) - 2Cov(X,Y) ;  Var(X+Y) = Var(X) + Var(Y) + 2Cov(X,Y)
+            df_stats.loc[id, "std"] = math.sqrt(df_stats.loc[id, "variance"])
+        blank_df.to_excel(os.path.join(f"{SAVE_BLANK_EXCEL_PATH}", "blank_statistics.xlsx"))
 
 
     df_stats.to_excel(f"{SAVE_EXCEL_PATH}/statistics.xlsx" )

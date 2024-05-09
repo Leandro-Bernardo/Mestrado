@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import scipy
+import math
 
 from tqdm import tqdm
 #from sklearn.model_selection import train_test_split
@@ -16,10 +17,34 @@ else:
     device = "cuda"
 
 # variables
-ANALYTE = "Chloride"
-SKIP_BLANK = False
+ANALYTE = "Alkalinity"
+SKIP_BLANK = True
 
 if ANALYTE == "Alkalinity":
+    EPOCHS = 1
+    LR = 0.001
+    BATCH_SIZE = 64
+    EVALUATION_BATCH_SIZE = 1
+    GRADIENT_CLIPPING_VALUE = 0.5
+    CHECKPOINT_SAVE_INTERVAL = 25
+    MODEL_VERSION = 'model_1'
+    DATASET_SPLIT = 0.8
+    USE_CHECKPOINT = True
+    RECEPTIVE_FIELD_DIM = 15
+
+elif ANALYTE == "Chloride":
+    EPOCHS = 1
+    LR = 0.001
+    BATCH_SIZE = 64
+    EVALUATION_BATCH_SIZE = 1
+    GRADIENT_CLIPPING_VALUE = 0.5
+    CHECKPOINT_SAVE_INTERVAL = 25
+    MODEL_VERSION = 'model_3'
+    DATASET_SPLIT = 0.8
+    USE_CHECKPOINT = False
+    RECEPTIVE_FIELD_DIM = 27
+
+if ANALYTE == "Phosphate":
     EPOCHS = 1
     LR = 0.001
     BATCH_SIZE = 64
@@ -30,30 +55,38 @@ if ANALYTE == "Alkalinity":
     DATASET_SPLIT = 0.8
     USE_CHECKPOINT = True
 
-elif ANALYTE == "Chloride":
+if ANALYTE == "Sulfate":
     EPOCHS = 1
     LR = 0.001
     BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 64
     GRADIENT_CLIPPING_VALUE = 0.5
     CHECKPOINT_SAVE_INTERVAL = 25
-    MODEL_VERSION = 'model_3'
+    MODEL_VERSION = 'model_1'
     DATASET_SPLIT = 0.8
-    USE_CHECKPOINT = False
+    USE_CHECKPOINT = True
 
 if SKIP_BLANK:
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "no_blank")
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "no_blank")
-
+    ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank")
 else:
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank")
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "with_blank")
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank")
+    ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank")
 
 LAST_CHECKPOINT = sorted(os.listdir(os.path.join(CHECKPOINT_ROOT, MODEL_VERSION)), key = lambda x: int(x.split('_')[-1]))[-1]
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, MODEL_VERSION, LAST_CHECKPOINT)
+
+EXPECTED_RANGE = {
+                "Alkalinity": (500.0, 2500.0),
+                "Chloride": (10000.0, 300000.0),
+                "Phosphate": (0.0, 50.0),
+                "Sulfate":(0.0, 4000.0),
+                 }
 
 print('Using this checkpoint:', CHECKPOINT_PATH)
 
@@ -230,8 +263,9 @@ def main():
         stats = Statistics(predicted_value_for_samples[f'sample_{i}'], expected_value_from_samples[f'sample_{i}'])
         plt.figure(figsize=(15, 8))
 
-        counts, bins = np.unique(values, return_counts = True)
-        plt.hist(values, bins=len(bins), color='black')
+        #counts, bins = np.unique(values, return_counts = True)
+        bins = int(math.ceil(max_value/EXPECTED_RANGE[ANALYTE][1])) #valor maximo do analito / metade do pior erro relativo (10% do menor valor esperado)
+        plt.hist(values, bins = bins, range = (min_value, max_value), color='black')  #bins = bins ,color='black') #bins=len(bins), color='black')
 
         # adds vertical lines for basic statistic values
         plt.axvline(x = stats.mean, alpha = 0.5, c = 'red')
@@ -251,6 +285,8 @@ def main():
 
         # Defines a scale factor for positions in y axis
         scale_factor = 0.08 * y_max
+
+        #TODO FIX THIS LATER
         if ANALYTE == "Alkalinity":
             text = 210
             text_median = 240
@@ -300,10 +336,11 @@ def main():
 
     partial_loss_from_original_image = np.array(partial_loss_from_original_image) #to optimize computing
 
+    rf = (RECEPTIVE_FIELD_DIM - 1)/2  #  alkalinity:  (15-1)/2,  chloride :   (27-1)/2
     for i in range(len(partial_loss_from_original_image)):
         original_image = cv2.imread(os.path.join(ORIGINAL_IMAGE_ROOT, f"sample_{i + train_split_size}.png"))
         original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
-        original_image = original_image[9 : original_image.shape[0] - 9,  9 : original_image.shape[1] - 9,:] # cropps the image to match the cropped image after 3rd cnn
+        original_image = original_image[rf : original_image.shape[0] - rf,  rf : original_image.shape[1] - rf,:] # cropps the image to match the cropped image after 3rd cnn
 
         #plots error map and original image sidewise
         fig,ax = plt.subplots(nrows=1,ncols=2)

@@ -13,8 +13,8 @@ else:
     device = "cuda"
 
 # variables
-ANALYTE = "Alkalinity"
-SKIP_BLANK = True
+ANALYTE = "Chloride"
+SKIP_BLANK = False
 USE_CHECKPOINT = False
 
 if ANALYTE == "Alkalinity":
@@ -31,7 +31,7 @@ if ANALYTE == "Alkalinity":
 elif ANALYTE == "Chloride":
     FIRST_EPOCH = 0
     FINAL_EPOCH = 5000
-    LR = 0.001
+    LR = 0.01
     BATCH_SIZE = 64
     GRADIENT_CLIPPING_VALUE = 0.5
     CHECKPOINT_SAVE_INTERVAL = 25
@@ -104,9 +104,9 @@ elif ANALYTE == "Chloride":
         torch.nn.ReLU(),
         torch.nn.Linear(in_features=512, out_features=256),
         torch.nn.ReLU(),
-        torch.nn.Linear(in_features=256, out_features=124),
+        torch.nn.Linear(in_features=256, out_features=128),
         torch.nn.ReLU(),
-        torch.nn.Linear(in_features=124, out_features=64),
+        torch.nn.Linear(in_features=128, out_features=64),
         torch.nn.ReLU(),
         torch.nn.Linear(in_features=64, out_features=32),
         torch.nn.ReLU(),
