@@ -74,7 +74,7 @@ if ANALYTE == "Alkalinity":
 
         #concatena todas as imagens em um unico tensor e faz o cropp baseado no campo receptivo da terceira camada (15 x 15)
         sample_features = torch.cat((features2, features5_rescaled, features10_rescaled), dim=0)                       # shape: 448 , 112, 112
-        rf = (RECEPTIVE_FIELD_DIM - 1)/2  # (15-1)/2  =  7
+        rf = int((RECEPTIVE_FIELD_DIM - 1)/2)  # (15-1)/2  =  7
         sample_features = sample_features[:, rf : sample_features.shape[1] - rf,  rf : sample_features.shape[2] - rf] # shape: 448 ,  105,  105
         sample_features = torch.flatten(torch.permute(sample_features, (1, 2, 0)), start_dim=0, end_dim=1)  # flatten    shape: num_vectors, num_channels
 
@@ -103,7 +103,7 @@ elif ANALYTE == "Chloride":
 
         #concatena todas as imagens em um unico tensor e faz o cropp baseado no campo receptivo da quinta camada (27 x 27)
         sample_features = torch.cat((features2, features5_rescaled, features10_rescaled, features15_rescaled, features20_rescaled), dim=0)  # shape: 448 , 112, 112
-        rf = (RECEPTIVE_FIELD_DIM - 1)/2  # (27-1)/2  =  13
+        rf = int((RECEPTIVE_FIELD_DIM - 1)/2)  # (27-1)/2  =  13
         sample_features = sample_features[:, rf : sample_features.shape[1] - rf,  rf : sample_features.shape[2] - rf]  # shape: 448 ,  99,  99
         sample_features = torch.flatten(torch.permute(sample_features, (1, 2, 0)), start_dim=0, end_dim=1)  # flatten    shape: num_vectors, num_channels
 

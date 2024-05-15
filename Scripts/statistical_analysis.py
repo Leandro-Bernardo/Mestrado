@@ -264,13 +264,13 @@ def main():
         plt.figure(figsize=(15, 8))
 
         #counts, bins = np.unique(values, return_counts = True)
-        bins = int(math.ceil(max_value/EXPECTED_RANGE[ANALYTE][1])) #valor maximo do analito / metade do pior erro relativo (10% do menor valor esperado)
+        bins = int(math.ceil(max_value/(EXPECTED_RANGE[ANALYTE][0]*0.1/2))) #valor maximo do analito / metade do pior erro relativo (10% do menor valor esperado)
         plt.hist(values, bins = bins, range = (min_value, max_value), color='black')  #bins = bins ,color='black') #bins=len(bins), color='black')
 
         # adds vertical lines for basic statistic values
         plt.axvline(x = stats.mean, alpha = 0.5, c = 'red')
         plt.axvline(x = stats.median, alpha = 0.5, c = 'blue')
-        plt.axvline(x = stats.mode, alpha = 0.5, c = 'green')
+        #plt.axvline(x = stats.mode, alpha = 0.5, c = 'green')
 
         plt.title(f"Sample_{i + train_split_size}, Expected Value: {round(expected_value_from_samples[f'sample_{i}'][0][0], 2)}")
         plt.xlabel('Prediction')
@@ -310,10 +310,10 @@ def main():
                 s = f" mode:" )
 
         plt.text(x = x_max + text,  y=y_max - 10.78 * scale_factor,
-                s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
+                s = f" {stats.mode:.2f}", c = 'black', alpha = 0.6)
 
         plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
-                s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}")
+                s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}", c = 'black')
 
         #plt.text(x = max_value + 0.5,  y = 0,
         #         s = f" mean: {stats.mean:.2f}\n median: {stats.median:.2f}\n mode: {stats.mode:.2f}\n var: {stats.variance:.2f}\n std: {stats.std:.2f}\n min: {stats.min_value:.2f}\n max: {stats.max_value:.2f}")
@@ -336,8 +336,8 @@ def main():
 
     partial_loss_from_original_image = np.array(partial_loss_from_original_image) #to optimize computing
 
-    rf = (RECEPTIVE_FIELD_DIM - 1)/2  #  alkalinity:  (15-1)/2,  chloride :   (27-1)/2
-    for i in range(len(partial_loss_from_original_image)):
+    rf = int((RECEPTIVE_FIELD_DIM - 1)/2)  #  alkalinity:  (15-1)/2,  chloride :   (27-1)/2
+    for i in range(len(partial_loss_from_original_image) -1):
         original_image = cv2.imread(os.path.join(ORIGINAL_IMAGE_ROOT, f"sample_{i + train_split_size}.png"))
         original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
         original_image = original_image[rf : original_image.shape[0] - rf,  rf : original_image.shape[1] - rf,:] # cropps the image to match the cropped image after 3rd cnn
