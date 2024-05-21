@@ -45,3 +45,13 @@ Chloride_Samples/
 Phosphate_Samples/
 
 Sulfate_Samples/
+
+blank_files/Alkalinity/
+
+test_samples/
+
+train_samples/
+
+Scripts/checkpoints/
+
+Scripts/chemical_analysis/chloride/__pycache__/
