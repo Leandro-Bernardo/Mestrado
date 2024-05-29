@@ -67,6 +67,7 @@ if ANALYTE == "Sulfate":
     USE_CHECKPOINT = True
 
 if SKIP_BLANK:
+    IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank")
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "descriptors", f"{ANALYTE}", "no_blank")
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "no_blank")
@@ -149,9 +150,9 @@ elif ANALYTE == "Chloride":
         torch.nn.ReLU(),
         torch.nn.Linear(in_features=512, out_features=256),
         torch.nn.ReLU(),
-        torch.nn.Linear(in_features=256, out_features=124),
+        torch.nn.Linear(in_features=256, out_features=128),
         torch.nn.ReLU(),
-        torch.nn.Linear(in_features=124, out_features=64),
+        torch.nn.Linear(in_features=128, out_features=64),
         torch.nn.ReLU(),
         torch.nn.Linear(in_features=64, out_features=32),
         torch.nn.ReLU(),
