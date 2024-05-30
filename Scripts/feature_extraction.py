@@ -3,6 +3,7 @@ import cv2
 import torch
 import torchvision
 import numpy as np
+import json
 
 from torch import FloatTensor, UntypedStorage
 from torchvision.models.feature_extraction import get_graph_node_names
@@ -16,14 +17,12 @@ SKIP_BLANK = False
 
 if SKIP_BLANK:
     LOAD_TRAIN_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank", "train"))
-    SAVE_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "no_blank", "train")
     LOAD_TEST_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank", "test"))
-    SAVE_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "no_blank", "test")
+    SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "no_blank")
 else:
     LOAD_TRAIN_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank", "train"))
-    SAVE_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", "train")
     LOAD_TEST_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank", "test"))
-    SAVE_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", "test")
+    SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank")
 
 if ANALYTE == "Alkalinity":
     feature_list = ['features.2', 'features.5', 'features.10']
@@ -40,10 +39,10 @@ elif ANALYTE == "Chloride":
 TOTAL_TRAIN_SAMPLES = (int(len(os.listdir(LOAD_TRAIN_PATH))/3))
 TOTAL_TEST_SAMPLES = (int(len(os.listdir(LOAD_TEST_PATH))/3))
 
-os.makedirs(SAVE_TRAIN_PATH, exist_ok = True)
-os.makedirs(SAVE_TEST_PATH, exist_ok = True)
+os.makedirs(SAVE_PATH, exist_ok = True)
 
-def main(load_path, save_path, total_samples):
+
+def main(load_path,  total_samples, stage):
     #loads images
     cropped_images = []
 
@@ -79,8 +78,8 @@ def main(load_path, save_path, total_samples):
     storage_index = 0
     dim = total_samples * IMAGE_SIZE
     nbytes_float32 = torch.finfo(torch.float32).bits//8
-    descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(save_path, "descriptors.bin"), shared = True, nbytes= (dim * DESCRIPTOR_DEPTH) * nbytes_float32)).view(dim, DESCRIPTOR_DEPTH)
-    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(save_path, "descriptors_anotation.bin"), shared = True, nbytes= (dim) * nbytes_float32))#.view(dim)
+    descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_{stage}.bin"), shared = True, nbytes= (dim * DESCRIPTOR_DEPTH) * nbytes_float32)).view(dim, DESCRIPTOR_DEPTH)
+    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_anotation_{stage}.bin"), shared = True, nbytes= (dim) * nbytes_float32))#.view(dim)
     #TODO salvar no json os metadados
 
     # extract the features from all images
@@ -112,6 +111,13 @@ def main(load_path, save_path, total_samples):
             for index, _ in enumerate(sample_features):
                 descriptors[index] = sample_features[index]
                 expected_value[index] = sample_theoretical_value
+
+            with open(os.path.join(save_path, "metadata.json")) as file:
+                json.dump({
+                    "total_samples": total_samples,
+                    "image_size": IMAGE_SIZE,
+                    "descriptor_depth": DESCRIPTOR_DEPTH
+                }, file)
 
     elif ANALYTE == "Chloride":
         for sample_key, sample in image_tensor.items():  #extrai caracteristicas das camadas de convolucao desejadas (primeira, segunda e terceira)
@@ -149,8 +155,14 @@ def main(load_path, save_path, total_samples):
                 expected_value[storage_index] = sample_theoretical_value[index]
 
                 storage_index +=1
-        print(' ')
+
+            with open(os.path.join(save_path, f"metadata_{stage}.json")) as file:
+                json.dump({
+                    "total_samples": total_samples,
+                    "image_size": IMAGE_SIZE,
+                    "descriptor_depth": DESCRIPTOR_DEPTH
+                }, file)
 
 if __name__ == "__main__":
-    main(LOAD_TRAIN_PATH, SAVE_TRAIN_PATH, TOTAL_TRAIN_SAMPLES)
-    main(LOAD_TEST_PATH, SAVE_TEST_PATH, TOTAL_TEST_SAMPLES)
+    main(LOAD_TRAIN_PATH, TOTAL_TRAIN_SAMPLES, "train")
+    main(LOAD_TEST_PATH, TOTAL_TEST_SAMPLES, "test")

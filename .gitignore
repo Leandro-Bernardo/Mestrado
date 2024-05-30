@@ -55,3 +55,7 @@ train_samples/
 Scripts/checkpoints/
 
 Scripts/chemical_analysis/chloride/__pycache__/
+
+Scripts/test.py
+
+Scripts/models/__pycache__/
