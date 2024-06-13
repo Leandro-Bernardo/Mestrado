@@ -59,3 +59,11 @@ Scripts/chemical_analysis/chloride/__pycache__/
 Scripts/test.py
 
 Scripts/models/__pycache__/
+
+*.bin
+
+Udescriptors/Chloride/with_blank/test/metadata.json
+
+*.json
+
+*.txt

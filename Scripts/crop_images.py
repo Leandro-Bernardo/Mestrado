@@ -18,20 +18,24 @@ SKIP_BLANK = False
 PROCESS_BLANK_FILES_SEPARATEDLY = False
 
 SAMPLES_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "train_samples", f"{ANALYTE}")
+SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "val_samples", f"{ANALYTE}")
 SAMPLES_TEST_PATH = os.path.join(os.path.dirname(__file__), "..",  "test_samples", f"{ANALYTE}")
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
 if SKIP_BLANK == True and PROCESS_BLANK_FILES_SEPARATEDLY == True:  #dont use blanks nor separated blanks
     SAVE_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", "train")
+    SAVE_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", "val")
     SAVE_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", "test")
 
 elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == False: # use blanks and process it together
     SAVE_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", "train")
+    SAVE_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", "val")
     SAVE_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", "test")
 
 elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == True: # process blanks separatedly
     SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", "blank_files", f"{ANALYTE}")
     SAVE_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank", "train")
+    SAVE_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank", "val")
     SAVE_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank", "test")
 
 else:
@@ -39,6 +43,7 @@ else:
 
 #makes path dir
 os.makedirs(SAVE_TRAIN_PATH, exist_ok = True)
+os.makedirs(SAVE_VAL_PATH, exist_ok = True)
 os.makedirs(SAVE_TEST_PATH, exist_ok = True)
 os.makedirs(CACHE_PATH, exist_ok = True)
 
@@ -94,7 +99,7 @@ def main(sample_path, save_path):
     count_of_valid_samples = 0
     for i, _ in enumerate(processed_samples):
         try:
-            print(f"Imagem {i}")
+            print(f"Image {i}, total: {len(processed_samples)}")
 
             #gets the mask for that sample
             mask =  processed_samples[i].sample_analyte_mask
@@ -139,4 +144,5 @@ def main(sample_path, save_path):
 
 if __name__ == "__main__":
     main(SAMPLES_TRAIN_PATH, SAVE_TRAIN_PATH)
+    main(SAMPLES_VAL_PATH, SAVE_VAL_PATH)
     main(SAMPLES_TEST_PATH, SAVE_TEST_PATH)
