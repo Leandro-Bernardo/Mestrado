@@ -37,6 +37,8 @@ class Model_3(torch.nn.Module):
         x = self.l5(x)
         x = self.output_layer(x)
 
+        return x
+
 
 class Model_4(torch.nn.Module):
     def __init__(self, in_channels: int  = 1472, device: str = "cuda"):
@@ -79,4 +81,6 @@ class Model_4(torch.nn.Module):
         x = self.l6(x)
         x = self.l7(x)
         x = self.output_layer(x)
+
+        return x
 
