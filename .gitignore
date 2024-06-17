@@ -67,3 +67,7 @@ Udescriptors/Chloride/with_blank/test/metadata.json
 *.json
 
 *.txt
+
+*.yaml
+
+*.jpg
