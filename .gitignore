@@ -71,3 +71,9 @@ Udescriptors/Chloride/with_blank/test/metadata.json
 *.yaml
 
 *.jpg
+
+Scripts/models/lightning(antigo).py
+
+Scripts/old_scripts/test.py
+
+Scripts/old_scripts/test2.py

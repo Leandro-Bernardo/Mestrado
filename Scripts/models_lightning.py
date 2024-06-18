@@ -19,7 +19,7 @@ else:
 #Variables
 ANALYTE = "Chloride"
 SKIP_BLANK = False
-USE_CHECKPOINT = False
+USE_CHECKPOINT = True
 
 if ANALYTE == "Alkalinity":
     MODEL_VERSION = "Model_2"
@@ -30,7 +30,7 @@ if ANALYTE == "Alkalinity":
     LOSS_FUNCTION = torch.nn.MSELoss()
     BATCH_SIZE = 64
     GRADIENT_CLIPPING_VALUE = 0.5
-    CHECKPOINT_SAVE_INTERVAL = 25
+    #CHECKPOINT_SAVE_INTERVAL = 25
     IMAGE_SIZE = 97 * 97  # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
     DESCRIPTOR_DEPTH = 448
 
@@ -42,53 +42,59 @@ elif ANALYTE == "Chloride":
     FINAL_EPOCH = 5000
     LR = 0.001
     LOSS_FUNCTION = torch.nn.MSELoss()
-    BATCH_SIZE = 64
+    BATCH_SIZE = 256
     GRADIENT_CLIPPING_VALUE = 0.5
-    CHECKPOINT_SAVE_INTERVAL = 20
+    #CHECKPOINT_SAVE_INTERVAL = 20
     IMAGE_SIZE = 86 * 86  # after the crop based on the receptive field  (shape = (112 - 27, 112 - 27))
     DESCRIPTOR_DEPTH = 1472
 
 #defines path dir
 if SKIP_BLANK:
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "Udescriptors", "no_blank")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank")
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank",  "train" ))
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "no_blank")
     LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "no_blank")
 
 else:
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "Udescriptors", "with_blank")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank")
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank",  "train"))
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank")
     LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "with_blank")
+
 
 # creates directories
 os.makedirs(CHECKPOINT_ROOT, exist_ok =True)
 os.makedirs(LEARNING_VALUES_ROOT, exist_ok =True)
 
 if USE_CHECKPOINT:
-    LAST_CHECKPOINT = sorted(os.listdir(os.path.join(CHECKPOINT_ROOT, MODEL_VERSION)), key=lambda x: int(x.split('_')[-1]))
-    CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, MODEL_VERSION, LAST_CHECKPOINT[-1])
-    print('Using this checkpoint:', CHECKPOINT_PATH)
-    FIRST_EPOCH = int(CHECKPOINT_PATH.split('_')[-1]) + 1
+    LAST_CHECKPOINT = sorted(os.listdir(os.path.join(CHECKPOINT_ROOT)))[-1]#sorted(os.listdir(os.path.join(CHECKPOINT_ROOT)), key=lambda x: int(x.split('-')[-1]))
+    CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, LAST_CHECKPOINT)#f"{MODEL_VERSION}.ckpt")
+    #FIRST_EPOCH = int(CHECKPOINT_PATH.split('_')[-1]) + 1
 else:
     os.makedirs(os.path.join(CHECKPOINT_ROOT, MODEL_VERSION), exist_ok =True)
 
 def main():
 
-    checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}",every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
+    checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}-v1", save_top_k=1, monitor='Loss/Val', mode='min')#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
 
     #train_dataset = PrepareDataset(descriptors_root= DESCRIPTORS_ROOT, stage="train")
     #val_dataset = PrepareDataset(descriptors_root= DESCRIPTORS_ROOT, stage="val")
 
-    data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=1)
+    data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=2)
 
-    model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR, learning_rate_patience=10)
+    if USE_CHECKPOINT:
+        model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR,  learning_rate_patience=10, checkpoint_path=CHECKPOINT_PATH)
+
+    else:
+        model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR, learning_rate_patience=10)
 
     #trains the model
-    trainer = Trainer(accelerator="cuda", max_epochs=FINAL_EPOCH, callbacks=checkpoint_callback, log_every_n_steps=1000, num_sanity_val_steps=0, enable_progress_bar=True)#, gradient_clip_val=0.5)#, callbacks=checkpoint_callback)
+    trainer = Trainer(accelerator="cuda", max_epochs=FINAL_EPOCH, callbacks=checkpoint_callback, log_every_n_steps=IMAGE_SIZE, num_sanity_val_steps=0, enable_progress_bar=True)#, gradient_clip_val=0.5)#, callbacks=checkpoint_callback)
 
     trainer.fit(model=model, datamodule=data_module)#, train_dataloaders=dataset
 
 
 if __name__ == "__main__":
+    if USE_CHECKPOINT:
+        print(f"Using this checkpoint: {CHECKPOINT_PATH}")
     main()
