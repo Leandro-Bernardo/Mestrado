@@ -81,3 +81,13 @@ Scripts/lightning_logs/version_1/metrics.csv
 *.csv
 
 *.jpg
+
+*.yaml
+
+*.jpg
+
+Scripts/models/lightning(antigo).py
+
+Scripts/old_scripts/test.py
+
+Scripts/old_scripts/test2.py
