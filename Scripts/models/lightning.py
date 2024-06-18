@@ -51,7 +51,7 @@ class DataModule(LightningDataModule):
         return DataLoader(self.train_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle= True, drop_last=True)
 
     def val_dataloader(self):
-        return DataLoader(self.val_subset, batch_size=1, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
+        return DataLoader(self.val_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
 
     def test_dataloader(self):
         return DataLoader(self.test_subset,  batch_size=1, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
@@ -92,10 +92,14 @@ class BaseModel(LightningModule):
     #defines basics operations for train, validadion and test
     def _any_step(self, batch: Tuple[torch.tensor, torch.tensor], stage: str):
         X, y = batch[0].squeeze(), batch[1].squeeze()
- #       X, y = X.squeeze(), y.squeeze()
         predicted_value = self(X)    # o proprio objeto de BaseModel é o modelo (https://towardsdatascience.com/from-pytorch-to-pytorch-lightning-a-gentle-introduction-b371b7caaf09)
-        loss = self.criterion(predicted_value.squeeze(), y)
+        predicted_value = predicted_value.squeeze()
+        # Compute and log the loss value.
+        loss = self.criterion(predicted_value, y)
         self.log(f"Loss/{stage}", loss)
+        # Compute and log step metrics.
+        metrics: MetricCollection = self.metrics[stage]  # type: ignore
+        self.log_dict({f'{metric_name}/{stage}/Step': value for metric_name, value in metrics(predicted_value, y).items()})
         return loss
 
     def training_step(self, batch: List[torch.tensor]):#, batch_idx: int):
@@ -107,11 +111,13 @@ class BaseModel(LightningModule):
     def test_step(self, batch: List[torch.tensor]):#, batch_idx: int):
         return self._any_step(batch, "Test")
 
-
     def _any_epoch_end(self, stage: str):
         metrics: MetricCollection = self.metrics[stage]  # type: ignore
         self.log_dict({f'{metric_name}/{stage}/Epoch': value for metric_name, value in metrics.compute().items()})
         metrics.reset()
+        # Print loss at the end of each epoch
+        #loss = self.trainer.callback_metrics[f"Loss/{stage}"]
+        #print(f"Epoch {self.current_epoch} - Loss/{stage}: {loss.item()}")
 
     def on_train_epoch_end(self):
         self._any_epoch_end("Train")
@@ -121,4 +127,5 @@ class BaseModel(LightningModule):
 
     def on_test_epoch_end(self):
         self._any_epoch_end("Test")
+
 

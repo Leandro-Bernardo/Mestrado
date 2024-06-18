@@ -67,3 +67,17 @@ Udescriptors/Chloride/with_blank/test/metadata.json
 *.json
 
 *.txt
+
+Udescriptors/Chloride/with_blank/test/
+
+Scripts/test2.py
+
+Udescriptors/Chloride/with_blank/train/
+
+*.yaml
+
+Scripts/lightning_logs/version_1/metrics.csv
+
+*.csv
+
+*.jpg
