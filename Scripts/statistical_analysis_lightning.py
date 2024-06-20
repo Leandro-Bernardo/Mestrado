@@ -40,7 +40,7 @@ if ANALYTE == "Alkalinity":
     GRADIENT_CLIPPING_VALUE = 0.5
     CHECKPOINT_SAVE_INTERVAL = 25
     MODEL_VERSION = "Model_1"
-    MODEL_NETWORK = alkalinity.Model_1
+    MODEL_NETWORK = alkalinity.Model_1()
     DATASET_SPLIT = 0.8
     USE_CHECKPOINT = True
     RECEPTIVE_FIELD_DIM = 15
@@ -57,7 +57,7 @@ elif ANALYTE == "Chloride":
     GRADIENT_CLIPPING_VALUE = 0.5
     CHECKPOINT_SAVE_INTERVAL = 25
     MODEL_VERSION = "Model_4"
-    MODEL_NETWORK = chloride.Model_4
+    MODEL_NETWORK = chloride.Model_4()
     DATASET_SPLIT = 0.8
     USE_CHECKPOINT = False
     RECEPTIVE_FIELD_DIM = 27
@@ -136,10 +136,19 @@ os.makedirs(os.path.join(EVALUATION_ROOT, "test", "histogram", MODEL_VERSION), e
 os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_cnn1_output", MODEL_VERSION), exist_ok =True)
 os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_original_image", MODEL_VERSION), exist_ok =True)
 
+model = MODEL_NETWORK
+loss_fn = LOSS_FUNCTION#torch.nn.MSELoss()
+optimizer = torch.optim.SGD(params=model.parameters(), lr=LR)
+
+checkpoint = torch.load(CHECKPOINT_PATH)
+model.load_state_dict(checkpoint['state_dict'], strict=False)
+optimizer.load_state_dict(checkpoint['optimizer_states'])
+
+# utilities functions and classes
 
 # loads datasets for evaluation
-def load_dataset(stage: str, descriptor_root: str = DESCRIPTORS_ROOT):
-        with open(os.path.join(descriptor_root, f'metadata_{stage}.json'), "r") as file:
+def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_ROOT):
+        with open(os.path.join(descriptor_root, f'metadata_{dataset_for_inference}.json'), "r") as file:
             metadata = json.load(file)
         total_samples = metadata['total_samples']
         image_size = metadata['image_size']
@@ -149,12 +158,36 @@ def load_dataset(stage: str, descriptor_root: str = DESCRIPTORS_ROOT):
         #NOTE:
         # at the moment, descriptors are saved in the format (num samples, image_size, descriptors_depth), but they are read in format (num samples * image_size,descriptors_depth).
         # expected_value is saved in format (num samples, image_size), and read in format (num samples * image_size)
-        descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_{stage}.bin"), shared = False, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth).to("cpu")
-        expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_anotation_{stage}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size).to("cpu")
+        descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth).to("cuda")
+        expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_anotation_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size).to("cuda")
 
         return TensorDataset(descriptors, expected_value)
+
+# train the model
+def train_epoch(
+                model: torch.nn,
+                train_loader: TensorDataset,
+                optimizer: torch.optim ,
+                loss_fn: torch.nn = loss_fn) -> float:
+
+    model.train()
+    total_loss = 0
+    for X_batch, y_batch in train_loader:
+        optimizer.zero_grad()
+        y_pred = model(X_batch).squeeze(1)
+        loss = loss_fn(y_pred, y_batch)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_CLIPPING_VALUE)
+        optimizer.step()
+        total_loss += loss.item()
+    return total_loss / len(train_loader)
+
 #evaluates the model
-def evaluate(eval_loader, model, loss_fn= LOSS_FUNCTION) -> Tuple[np.array, np.array, np.array]:
+def evaluate(
+            model: torch.nn,
+            eval_loader: TensorDataset,
+            loss_fn: torch.nn = loss_fn) -> Tuple[np.array, np.array, np.array]:
+
     model.eval()  # change model to evaluation mode
 
     partial_loss = []
@@ -179,13 +212,13 @@ def evaluate(eval_loader, model, loss_fn= LOSS_FUNCTION) -> Tuple[np.array, np.a
 
     return partial_loss, predicted_value, expected_value # ,accuracy
 
-def get_min_max_values(mode):
+def get_min_max_values(dataset_for_inference):
 
-    if mode == 'train':
+    if dataset_for_inference == 'train':
         sample_path = os.path.join(SAMPLES_PATH, "train")
         descriptors_path = os.path.join(DESCRIPTORS_ROOT, "train")
 
-    elif mode == 'test':
+    elif dataset_for_inference == 'test':
         sample_path = os.path.join(SAMPLES_PATH, "test")
         descriptors_path = os.path.join(DESCRIPTORS_ROOT, "test")
 
@@ -197,7 +230,7 @@ def get_min_max_values(mode):
 
     # reads the untyped storage object of saved descriptors
     #descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(descriptors_path, "descriptors.bin"), shared=False, nbytes=(dim * DESCRIPTOR_DEPTH) * torch.finfo(torch.float32).bits // 8)).view(IMAGE_SIZE * total_samples, DESCRIPTOR_DEPTH)
-    expected_values_tensor = FloatTensor(UntypedStorage.from_file(os.path.join(descriptors_path, f"descriptors_anotation_{mode}.bin"), shared=False, nbytes=(dim) * torch.finfo(torch.float32).bits // 8)).view(IMAGE_SIZE * total_samples)
+    expected_values_tensor = FloatTensor(UntypedStorage.from_file(os.path.join(descriptors_path, f"descriptors_anotation_{dataset_for_inference}.bin"), shared=False, nbytes=(dim) * torch.finfo(torch.float32).bits // 8)).view(IMAGE_SIZE * total_samples)
 
     # saves values for graph scale
     min_value = float(torch.min(expected_values_tensor[:]))
@@ -229,12 +262,12 @@ class Statistics():
 def write_pdf_statistics():
     pass
 
-def main(mode):
+def main(dataset_for_inference):
     #TODO alterar isso para abrir a parti do json de metadados
     train_samples_len = (int(len(os.listdir(os.path.join(SAMPLES_PATH, "train")))/3))
     test_samples_len = (int(len(os.listdir(os.path.join(SAMPLES_PATH, "test")))/3))
 
-    if mode == "train":
+    if dataset_for_inference == "train":
         len_mode = train_samples_len
         dataset = load_dataset("train")
 
@@ -243,7 +276,7 @@ def main(mode):
         save_error_from_image_path = os.path.join(EVALUATION_ROOT, "train", "error_from_image","from_original_image", MODEL_VERSION)
         original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT, "train")
 
-    elif mode == "test":
+    elif dataset_for_inference == "test":
          len_mode = test_samples_len
          dataset = load_dataset("test")
 
@@ -257,31 +290,26 @@ def main(mode):
 
     #training time
     print("Training time")
-    # loads datamodule (for the model.load)
-    data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=2)
-    #dataset_test = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="test", train_batch_size= BATCH_SIZE, num_workers=2)
+    for actual_epoch in tqdm(range(EPOCHS)):
+        train_loss = train_epoch(model=model, dataset=dataset, optimizer=optimizer, loss_fn=loss_fn)
 
-    # loads the base model (BaseModel Class)
-    base_model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR, checkpoint_path=CHECKPOINT_PATH)
-    #trains the model
-    trainer = Trainer(accelerator="cuda", max_epochs=1, log_every_n_steps=IMAGE_SIZE, num_sanity_val_steps=0, enable_progress_bar=True)#, gradient_clip_val=0.5)#, callbacks=checkpoint_callback)
-    trainer.fit(model=base_model, datamodule=data_module)
+        print(f"Epoch {actual_epoch + 1}, Loss: {train_loss}")
 
     # gets the model used
-    model = base_model.model.to('cuda')
+    #model = base_model.model.to('cuda')
 
     #evaluation time
     print("Evaluation time")
-    partial_loss, predicted_value, expected_value = evaluate(eval_loader=dataset, model=model)
+    partial_loss, predicted_value, expected_value = evaluate(model=model, eval_loader=dataset)
 
     #transforms data before saving
     values_ziped = zip(predicted_value, expected_value)  #zips predicted and expected values
     column_array_values = np.array(list(values_ziped))  # converts to numpy
     #saves prediction`s data
-    with open(os.path.join(EVALUATION_ROOT, mode, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "w") as file: # overrides if file exists
+    with open(os.path.join(EVALUATION_ROOT, dataset_for_inference, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "w") as file: # overrides if file exists
         file.write("predicted_value,expected_value\n")
 
-    with open(os.path.join(EVALUATION_ROOT, mode, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "a+") as file:
+    with open(os.path.join(EVALUATION_ROOT, dataset_for_inference, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "a+") as file:
         for line in column_array_values:
             file.write(f"{line[0]}, {line[1]}\n")
 
@@ -290,7 +318,7 @@ def main(mode):
     predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
     expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
 
-    min_value, max_value = get_min_max_values(mode)
+    min_value, max_value = get_min_max_values(dataset_for_inference)
 
     for i in range(len_mode):
         values = np.array(predicted_value_for_samples[f'sample_{i}']).flatten() #flattens for histogram calculation
@@ -390,5 +418,5 @@ def main(mode):
 
 
 if __name__ == "__main__":
-    #main(mode="train")
-    main(mode="test")
+    #main(dataset_for_inference="train")
+    main(dataset_for_inference="test")
