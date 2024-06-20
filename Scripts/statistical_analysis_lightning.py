@@ -5,15 +5,20 @@ import matplotlib.pyplot as plt
 import cv2
 import scipy
 import math
+import json
 
 from tqdm import tqdm
 
 from models import alkalinity, chloride
 from models.lightning import DataModule, BaseModel
 
+from torch.utils.data import DataLoader, TensorDataset
+from torch import FloatTensor, UntypedStorage
+
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
+from typing import Tuple, List
 if not torch.cuda.is_available():
     assert("cuda isnt available")
 
@@ -24,10 +29,12 @@ else:
 ANALYTE = "Chloride"
 SKIP_BLANK = False
 IMAGES_TO_EVALUATE = "test"
+CHECKPOINT_FILENAME = "Model_4-v2.ckpt"
 
 if ANALYTE == "Alkalinity":
     EPOCHS = 1
     LR = 0.001
+    LOSS_FUNCTION = torch.nn.MSELoss()
     BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 1
     GRADIENT_CLIPPING_VALUE = 0.5
@@ -44,6 +51,7 @@ if ANALYTE == "Alkalinity":
 elif ANALYTE == "Chloride":
     EPOCHS = 1
     LR = 0.001
+    LOSS_FUNCTION = torch.nn.MSELoss()
     BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 1
     GRADIENT_CLIPPING_VALUE = 0.5
@@ -60,6 +68,7 @@ elif ANALYTE == "Chloride":
 if ANALYTE == "Phosphate":
     EPOCHS = 1
     LR = 0.001
+    LOSS_FUNCTION = torch.nn.MSELoss()
     BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 1
     GRADIENT_CLIPPING_VALUE = 0.5
@@ -75,6 +84,7 @@ if ANALYTE == "Phosphate":
 if ANALYTE == "Sulfate":
     EPOCHS = 1
     LR = 0.001
+    LOSS_FUNCTION = torch.nn.MSELoss()
     BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 1
     GRADIENT_CLIPPING_VALUE = 0.5
@@ -101,8 +111,8 @@ else:
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
 
-LAST_CHECKPOINT = sorted(os.listdir(os.path.join(CHECKPOINT_ROOT)))[-1]#sorted(os.listdir(os.path.join(CHECKPOINT_ROOT)), key=lambda x: int(x.split('-')[-1]))
-CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, LAST_CHECKPOINT)
+CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)
+print('Using this checkpoint:', CHECKPOINT_PATH)
 
 EXPECTED_RANGE = {
                 "Alkalinity": (500.0, 2500.0),
@@ -111,7 +121,7 @@ EXPECTED_RANGE = {
                 "Sulfate":(0.0, 4000.0),
                  }
 
-print('Using this checkpoint:', CHECKPOINT_PATH)
+
 
 #creates directories
 os.makedirs(EVALUATION_ROOT, exist_ok =True)
@@ -127,38 +137,45 @@ os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_cnn1
 os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_original_image", MODEL_VERSION), exist_ok =True)
 
 
+# loads datasets for evaluation
+def load_dataset(stage: str, descriptor_root: str = DESCRIPTORS_ROOT):
+        with open(os.path.join(descriptor_root, f'metadata_{stage}.json'), "r") as file:
+            metadata = json.load(file)
+        total_samples = metadata['total_samples']
+        image_size = metadata['image_size']
+        descriptor_depth = metadata['descriptor_depth']
+        nbytes_float32 = torch.finfo(torch.float32).bits//8
 
+        #NOTE:
+        # at the moment, descriptors are saved in the format (num samples, image_size, descriptors_depth), but they are read in format (num samples * image_size,descriptors_depth).
+        # expected_value is saved in format (num samples, image_size), and read in format (num samples * image_size)
+        descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_{stage}.bin"), shared = False, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth).to("cpu")
+        expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_anotation_{stage}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size).to("cpu")
 
-# #train the model
-model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR,  learning_rate_patience=10, checkpoint_path=CHECKPOINT_PATH)
-
-trainer = Trainer(accelerator="cuda", max_epochs=EPOCHS, callbacks=checkpoint_callback, log_every_n_steps=IMAGE_SIZE, num_sanity_val_steps=0, enable_progress_bar=True)#, gradient_clip_val=0.5)#, callbacks=checkpoint_callback)
-
-trainer.fit(model=model, datamodule=data_module)
-
+        return TensorDataset(descriptors, expected_value)
 #evaluates the model
-trainer.test(model=model, datamodule=data_module)#, ckpt_path= "best")#CHECKPOINT_PATH)
-
-def evaluate(model, eval_loader, loss_fn):
-
+def evaluate(eval_loader, model, loss_fn= LOSS_FUNCTION) -> Tuple[np.array, np.array, np.array]:
     model.eval()  # change model to evaluation mode
 
-    total_samples = len(eval_loader)
+    partial_loss = []
+    predicted_value = []
+    expected_value = []
+    #total_samples = len(eval_loader)
 
     with torch.no_grad():
         for X_batch, y_batch in eval_loader:
 
             y_pred = model(X_batch).squeeze(1)
-            predicted_value = round(y_pred.item(), 2)
-            expected_value = y_batch.item()
+            predicted_value.append(round(y_pred.item(), 2))
+
+            expected_value.append(y_batch.item())
 
             loss = loss_fn(y_pred, y_batch)
-            partial_loss = loss.item()
+            partial_loss.append(loss.item())
 
-            #_, predicted = torch.max(y_pred, 1)
-            #correct_predictions += (predicted == y_batch).sum().item()
-
-   # accuracy = correct_predictions / total_samples
+    partial_loss = np.array(partial_loss)
+    predicted_value = np.array(predicted_value)
+    expected_value = np.array(expected_value)
 
     return partial_loss, predicted_value, expected_value # ,accuracy
 
@@ -180,11 +197,11 @@ def get_min_max_values(mode):
 
     # reads the untyped storage object of saved descriptors
     #descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(descriptors_path, "descriptors.bin"), shared=False, nbytes=(dim * DESCRIPTOR_DEPTH) * torch.finfo(torch.float32).bits // 8)).view(IMAGE_SIZE * total_samples, DESCRIPTOR_DEPTH)
-    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(descriptors_path, "descriptors_anotation.bin"), shared=False, nbytes=(dim) * torch.finfo(torch.float32).bits // 8)).view(IMAGE_SIZE * total_samples)
+    expected_values_tensor = FloatTensor(UntypedStorage.from_file(os.path.join(descriptors_path, f"descriptors_anotation_{mode}.bin"), shared=False, nbytes=(dim) * torch.finfo(torch.float32).bits // 8)).view(IMAGE_SIZE * total_samples)
 
     # saves values for graph scale
-    min_value = float(torch.min(expected_value[:]))
-    max_value = float(torch.max(expected_value[:]))
+    min_value = float(torch.min(expected_values_tensor[:]))
+    max_value = float(torch.max(expected_values_tensor[:]))
 
     return min_value, max_value
 
@@ -212,20 +229,24 @@ class Statistics():
 def write_pdf_statistics():
     pass
 
-def main(sample_to_evaluate):
+def main(mode):
+    #TODO alterar isso para abrir a parti do json de metadados
     train_samples_len = (int(len(os.listdir(os.path.join(SAMPLES_PATH, "train")))/3))
     test_samples_len = (int(len(os.listdir(os.path.join(SAMPLES_PATH, "test")))/3))
 
-    if sample_to_evaluate == "train":
+    if mode == "train":
         len_mode = train_samples_len
+        dataset = load_dataset("train")
 
         save_histogram_path = os.path.join(EVALUATION_ROOT, "train", "histogram", MODEL_VERSION)
         save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, "train", "error_from_image", "from_cnn1_output", MODEL_VERSION)
         save_error_from_image_path = os.path.join(EVALUATION_ROOT, "train", "error_from_image","from_original_image", MODEL_VERSION)
         original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT, "train")
 
-    elif sample_to_evaluate == "test":
+    elif mode == "test":
          len_mode = test_samples_len
+         dataset = load_dataset("test")
+
          save_histogram_path = os.path.join(EVALUATION_ROOT, "test", "histogram", MODEL_VERSION, )
          save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_cnn1_output", MODEL_VERSION)
          save_error_from_image_path = os.path.join(EVALUATION_ROOT,  "test", "error_from_image", "from_original_image", MODEL_VERSION)
@@ -234,58 +255,42 @@ def main(sample_to_evaluate):
     else:
         NotImplementedError
 
-    #training
+    #training time
     print("Training time")
-    for actual_epoch in tqdm(range(EPOCHS)):
-        starting_point = 0
-        batches_loss = 0
-        train_samples_len = (int(len(os.listdir(os.path.join(SAMPLES_PATH, "train")))/3))
-        num_batches = int(train_samples_len * IMAGE_SIZE / BATCH_SIZE)
+    # loads datamodule (for the model.load)
+    data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=2)
+    #dataset_test = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="test", train_batch_size= BATCH_SIZE, num_workers=2)
 
-        for _ in range(num_batches):
-                sample_batch = load_files(starting_point, mode = "train")
-                loss = train_epoch(model, sample_batch, optimizer, loss_fn)
-                batches_loss += loss
-                starting_point += BATCH_SIZE
+    # loads the base model (BaseModel Class)
+    base_model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR, checkpoint_path=CHECKPOINT_PATH)
+    #trains the model
+    trainer = Trainer(accelerator="cuda", max_epochs=1, log_every_n_steps=IMAGE_SIZE, num_sanity_val_steps=0, enable_progress_bar=True)#, gradient_clip_val=0.5)#, callbacks=checkpoint_callback)
+    trainer.fit(model=base_model, datamodule=data_module)
 
-    mean_loss = batches_loss/num_batches
+    # gets the model used
+    model = base_model.model.to('cuda')
 
-    print(f"Epoch {actual_epoch + 1}, Loss: {mean_loss}")
-
-    #evaluation
+    #evaluation time
     print("Evaluation time")
-    starting_point = 0
-    partial_loss = []
-    predicted_value = []
-    expected_value = []
+    partial_loss, predicted_value, expected_value = evaluate(eval_loader=dataset, model=model)
 
-    num_batches = int(len_mode * IMAGE_SIZE / EVALUATION_BATCH_SIZE)
-
-    for _ in range(num_batches):
-        sample_batch = load_files(starting_point, mode = sample_to_evaluate)
-        this_partial_loss, this_predicted_value, this_expected_value = evaluate(model, sample_batch, loss_fn)
-
-        partial_loss.append(this_partial_loss), predicted_value.append(this_predicted_value), expected_value.append(this_expected_value)
-
-        starting_point+= EVALUATION_BATCH_SIZE
-
-    partial_loss = np.array(partial_loss)
-    predicted_value = np.array(predicted_value)
-    expected_value = np.array(expected_value)
-
-    with open(os.path.join(EVALUATION_ROOT, sample_to_evaluate, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "w") as file: # overrides if file exists
+    #transforms data before saving
+    values_ziped = zip(predicted_value, expected_value)  #zips predicted and expected values
+    column_array_values = np.array(list(values_ziped))  # converts to numpy
+    #saves prediction`s data
+    with open(os.path.join(EVALUATION_ROOT, mode, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "w") as file: # overrides if file exists
         file.write("predicted_value,expected_value\n")
 
-    with open(os.path.join(EVALUATION_ROOT, sample_to_evaluate, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "a+") as file:
-        for i in range(len(predicted_value)):
-            file.write(f"{predicted_value[i]},{expected_value[i]}\n")
+    with open(os.path.join(EVALUATION_ROOT, mode, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "a+") as file:
+        for line in column_array_values:
+            file.write(f"{line[0]}, {line[1]}\n")
 
     #histograms
     print("calculating histograms of predictions\n")
     predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
     expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
 
-    min_value, max_value = get_min_max_values(sample_to_evaluate)
+    min_value, max_value = get_min_max_values(mode)
 
     for i in range(len_mode):
         values = np.array(predicted_value_for_samples[f'sample_{i}']).flatten() #flattens for histogram calculation
@@ -385,5 +390,5 @@ def main(sample_to_evaluate):
 
 
 if __name__ == "__main__":
-    #main(sample_to_evaluate="train")
-    main(sample_to_evaluate="test")
+    #main(mode="train")
+    main(mode="test")

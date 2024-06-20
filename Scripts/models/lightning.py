@@ -57,7 +57,7 @@ class DataModule(LightningDataModule):
         return DataLoader(self.test_subset,  batch_size=1, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
 
 class BaseModel(LightningModule):
-    def __init__(self, *, dataset: DataLoader, model: torch.nn.Module, batch_size: int, loss_function: torch.nn.Module, learning_rate: float, learning_rate_patience: int , **kwargs: Any):
+    def __init__(self, *, dataset: DataLoader, model: torch.nn.Module, batch_size: int, loss_function: torch.nn.Module, learning_rate: float, learning_rate_patience: int = None , **kwargs: Any):
         super().__init__()
         self.dataset = dataset
         self.model = model(**kwargs)

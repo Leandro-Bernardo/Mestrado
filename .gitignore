@@ -91,3 +91,7 @@ Scripts/models/lightning(antigo).py
 Scripts/old_scripts/test.py
 
 Scripts/old_scripts/test2.py
+
+Scripts/lightning_logs/version_40/checkpoints/epoch=0-step=51772.ckpt
+
+Scripts/test
