@@ -21,6 +21,7 @@ class DataModule(LightningDataModule):
         self.descriptor_root = descriptor_root
         self.train_batch_size = train_batch_size
         self.num_workers = num_workers
+        self.save_hyperparameters() # saves hyperparameters in checkpoint file
 
     def _load_dataset(self, descriptor_root: str, stage: str):
         with open(os.path.join(self.descriptor_root, f'metadata_{stage}.json'), "r") as file:
@@ -96,7 +97,7 @@ class BaseModel(LightningModule):
         predicted_value = predicted_value.squeeze()
         # Compute and log the loss value.
         loss = self.criterion(predicted_value, y)
-        self.log(f"Loss/{stage}", loss)
+        self.log(f"Loss/{stage}", loss, prog_bar=True)
         # Compute and log step metrics.
         metrics: MetricCollection = self.metrics[stage]  # type: ignore
         self.log_dict({f'{metric_name}/{stage}/Step': value for metric_name, value in metrics(predicted_value, y).items()})

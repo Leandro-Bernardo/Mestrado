@@ -19,8 +19,10 @@ else:
 #Variables
 ANALYTE = "Chloride"
 SKIP_BLANK = False
-USE_CHECKPOINT = True
-CHECKPOINT_FILENAME = "Model_4-v2.ckpt"
+USE_CHECKPOINT = False
+
+if USE_CHECKPOINT:
+    CHECKPOINT_FILENAME = "Model_4.ckpt"
 
 if ANALYTE == "Alkalinity":
     MODEL_VERSION = "Model_2"
@@ -76,7 +78,7 @@ else:
 
 def main():
 
-    checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}", save_top_k=1, monitor='Loss/Val', mode='min')#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
+    checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
 
     #train_dataset = PrepareDataset(descriptors_root= DESCRIPTORS_ROOT, stage="train")
     #val_dataset = PrepareDataset(descriptors_root= DESCRIPTORS_ROOT, stage="val")
@@ -90,7 +92,16 @@ def main():
         model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR, learning_rate_patience=10)
 
     #trains the model
-    trainer = Trainer(accelerator="cuda", max_epochs=FINAL_EPOCH, callbacks=checkpoint_callback, log_every_n_steps=IMAGE_SIZE, num_sanity_val_steps=0, enable_progress_bar=True)#, gradient_clip_val=0.5)#, callbacks=checkpoint_callback)
+    trainer = Trainer(
+                      accelerator="cuda",
+                      max_epochs=FINAL_EPOCH,
+                      callbacks=checkpoint_callback,
+                      gradient_clip_val=0.5,
+                      gradient_clip_algorithm="value",  # https://lightning.ai/docs/pytorch/stable/advanced/training_tricks.html#gradient-clipping
+                      log_every_n_steps=1,
+                      num_sanity_val_steps=0,
+                      enable_progress_bar=True
+                    )
 
     trainer.fit(model=model, datamodule=data_module)#, train_dataloaders=dataset
 
