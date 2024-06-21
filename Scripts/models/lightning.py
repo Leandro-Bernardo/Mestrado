@@ -130,3 +130,28 @@ class BaseModel(LightningModule):
         self._any_epoch_end("Test")
 
 
+    def predict_step(self, batch, batch_idx):
+        # change model to evaluation mode
+        model.eval()
+        # variables
+        partial_loss = []
+        predicted_value = []
+        expected_value = []
+        #total_samples = len(eval_loader)
+        # disable gradient calculation
+        with torch.no_grad():
+            for X_batch, y_batch in batch:
+
+                y_pred = self.model(X_batch).squeeze(1)
+                predicted_value.append(round(y_pred.item(), 2))
+
+                expected_value.append(y_batch.item())
+
+                loss = self.criterion(y_pred, y_batch)
+                partial_loss.append(loss.item())
+
+        partial_loss = np.array(partial_loss)
+        predicted_value = np.array(predicted_value)
+        expected_value = np.array(expected_value)
+
+        return partial_loss, predicted_value, expected_value # ,accuracy
