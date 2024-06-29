@@ -29,7 +29,7 @@ else:
 ANALYTE = "Chloride"
 SKIP_BLANK = False
 IMAGES_TO_EVALUATE = "test"
-CHECKPOINT_FILENAME = "Model_4-v2.ckpt"
+CHECKPOINT_FILENAME = "Model_4.ckpt"
 
 if ANALYTE == "Alkalinity":
     EPOCHS = 1
@@ -136,13 +136,13 @@ os.makedirs(os.path.join(EVALUATION_ROOT, "test", "histogram", MODEL_VERSION), e
 os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_cnn1_output", MODEL_VERSION), exist_ok =True)
 os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_original_image", MODEL_VERSION), exist_ok =True)
 
-model = MODEL_NETWORK
+model = MODEL_NETWORK.to('cuda')
 loss_fn = LOSS_FUNCTION#torch.nn.MSELoss()
 optimizer = torch.optim.SGD(params=model.parameters(), lr=LR)
 
 checkpoint = torch.load(CHECKPOINT_PATH)
 model.load_state_dict(checkpoint['state_dict'], strict=False)
-optimizer.load_state_dict(checkpoint['optimizer_states'])
+optimizer.load_state_dict(checkpoint['optimizer_states'][0])
 
 # utilities functions and classes
 
@@ -158,29 +158,29 @@ def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_
         #NOTE:
         # at the moment, descriptors are saved in the format (num samples, image_size, descriptors_depth), but they are read in format (num samples * image_size,descriptors_depth).
         # expected_value is saved in format (num samples, image_size), and read in format (num samples * image_size)
-        descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth).to("cuda")
-        expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_anotation_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size).to("cuda")
+        descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth)
+        expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_anotation_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
 
-        return TensorDataset(descriptors, expected_value)
+        return TensorDataset(descriptors.to("cuda"), expected_value.to("cuda"))
 
 # train the model
-def train_epoch(
-                model: torch.nn,
-                train_loader: TensorDataset,
-                optimizer: torch.optim ,
-                loss_fn: torch.nn = loss_fn) -> float:
+# def train_epoch(
+#                 model: torch.nn,
+#                 train_loader: TensorDataset,
+#                 optimizer: torch.optim ,
+#                 loss_fn: torch.nn = loss_fn) -> float:
 
-    model.train()
-    total_loss = 0
-    for X_batch, y_batch in train_loader:
-        optimizer.zero_grad()
-        y_pred = model(X_batch).squeeze(1)
-        loss = loss_fn(y_pred, y_batch)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_CLIPPING_VALUE)
-        optimizer.step()
-        total_loss += loss.item()
-    return total_loss / len(train_loader)
+#     model.train()
+#     total_loss = 0
+#     for X_batch, y_batch in train_loader:
+#         optimizer.zero_grad()
+#         y_pred = model(X_batch.unsqueeze(0)).squeeze(1)
+#         loss = loss_fn(y_pred, y_batch)
+#         loss.backward()
+#         torch.nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_CLIPPING_VALUE)
+#         optimizer.step()
+#         total_loss += loss.item()
+#     return total_loss / len(train_loader)
 
 #evaluates the model
 def evaluate(
@@ -198,7 +198,8 @@ def evaluate(
     with torch.no_grad():
         for X_batch, y_batch in eval_loader:
 
-            y_pred = model(X_batch).squeeze(1)
+            y_pred = model(X_batch.unsqueeze(0))
+            y_pred = y_pred.squeeze()
             predicted_value.append(round(y_pred.item(), 2))
 
             expected_value.append(y_batch.item())
@@ -215,26 +216,29 @@ def evaluate(
 def get_min_max_values(dataset_for_inference):
 
     if dataset_for_inference == 'train':
-        sample_path = os.path.join(SAMPLES_PATH, "train")
-        descriptors_path = os.path.join(DESCRIPTORS_ROOT, "train")
+        descriptor_root = os.path.join(DESCRIPTORS_ROOT, "train")
 
     elif dataset_for_inference == 'test':
-        sample_path = os.path.join(SAMPLES_PATH, "test")
-        descriptors_path = os.path.join(DESCRIPTORS_ROOT, "test")
+        descriptor_root = os.path.join(DESCRIPTORS_ROOT, "test")
 
     else:
         raise NotImplementedError
 
-    total_samples = int(len(os.listdir(sample_path)) / 3)
-    dim = total_samples * IMAGE_SIZE
+    with open(os.path.join(descriptor_root, f'metadata_{dataset_for_inference}.json'), "r") as file:
+            metadata = json.load(file)
+            total_samples = metadata['total_samples']
+            image_size = metadata['image_size']
+            descriptor_depth = metadata['descriptor_depth']
+            nbytes_float32 = torch.finfo(torch.float32).bits//8
+
 
     # reads the untyped storage object of saved descriptors
     #descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(descriptors_path, "descriptors.bin"), shared=False, nbytes=(dim * DESCRIPTOR_DEPTH) * torch.finfo(torch.float32).bits // 8)).view(IMAGE_SIZE * total_samples, DESCRIPTOR_DEPTH)
-    expected_values_tensor = FloatTensor(UntypedStorage.from_file(os.path.join(descriptors_path, f"descriptors_anotation_{dataset_for_inference}.bin"), shared=False, nbytes=(dim) * torch.finfo(torch.float32).bits // 8)).view(IMAGE_SIZE * total_samples)
+    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_anotation_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
 
     # saves values for graph scale
-    min_value = float(torch.min(expected_values_tensor[:]))
-    max_value = float(torch.max(expected_values_tensor[:]))
+    min_value = float(torch.min(expected_value[:]))
+    max_value = float(torch.max(expected_value[:]))
 
     return min_value, max_value
 
@@ -289,11 +293,11 @@ def main(dataset_for_inference):
         NotImplementedError
 
     #training time
-    print("Training time")
-    for actual_epoch in tqdm(range(EPOCHS)):
-        train_loss = train_epoch(model=model, dataset=dataset, optimizer=optimizer, loss_fn=loss_fn)
+    # print("Training time")
+    # for actual_epoch in tqdm(range(EPOCHS)):
+    #     train_loss = train_epoch(model=model, train_loader=dataset, optimizer=optimizer, loss_fn=loss_fn)
 
-        print(f"Epoch {actual_epoch + 1}, Loss: {train_loss}")
+    #     print(f"Epoch {actual_epoch + 1}, Loss: {train_loss}")
 
     # gets the model used
     #model = base_model.model.to('cuda')
