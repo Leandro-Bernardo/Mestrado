@@ -35,7 +35,7 @@ elif ANALYTE == "Chloride":
     BATCH_SIZE = 64
     GRADIENT_CLIPPING_VALUE = 0.5
     CHECKPOINT_SAVE_INTERVAL = 25
-    MODEL_VERSION = 'model_3'
+    MODEL_VERSION = 'model_1'
     DATASET_SPLIT = 0.8
 
 #defines path dir

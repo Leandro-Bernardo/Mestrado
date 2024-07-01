@@ -2,34 +2,34 @@ import torch
 
 import torch.nn as nn
 
-class Model_3(torch.nn.Module):
+class Model_1(torch.nn.Module):
     def __init__(self, in_channels: int = 1472, device: str = "cuda"):
         super().__init__()
 
         device: str = "cuda"
         self.in_layer = nn.Sequential(
             torch.nn.Linear(in_features = in_channels, out_features=1024),
-            nn.BatchNorm1d(1024),
+           # nn.BatchNorm1d(1024),
             torch.nn.ReLU())
         self.l1 = nn.Sequential(
             torch.nn.Linear(in_features=1024, out_features=512),
-            nn.BatchNorm1d(512),
+           # nn.BatchNorm1d(512),
             torch.nn.ReLU())
         self.l2 = nn.Sequential(
             torch.nn.Linear(in_features=512, out_features=256),
-            nn.BatchNorm1d(256),
+           # nn.BatchNorm1d(256),
             torch.nn.ReLU())
         self.l3 = nn.Sequential(
             torch.nn.Linear(in_features=256, out_features=128),
-            nn.BatchNorm1d(128),
+           # nn.BatchNorm1d(128),
             torch.nn.ReLU())
         self.l4 = nn.Sequential(
             torch.nn.Linear(in_features=128, out_features=64),
-            nn.BatchNorm1d(64),
+          # nn.BatchNorm1d(64),
             torch.nn.ReLU())
         self.l5 = nn.Sequential(
             torch.nn.Linear(in_features=64, out_features=32),
-            nn.BatchNorm1d(32),
+           # nn.BatchNorm1d(32),
             torch.nn.ReLU())
         self.output_layer = nn.Sequential(
             torch.nn.Linear(in_features=32, out_features=1))
@@ -46,7 +46,7 @@ class Model_3(torch.nn.Module):
         return x
 
 
-class Model_4(torch.nn.Module):
+class Model_2(torch.nn.Module):
     def __init__(self, in_channels: int  = 1472, device: str = "cuda"):
         super().__init__()
 

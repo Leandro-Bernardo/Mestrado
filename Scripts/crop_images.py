@@ -13,9 +13,9 @@ from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideS
 #from chemical_analysis.phosphate import PhosphateSampleDataset, ProcessedPhosphateSampleDataset
 
 #variables
-ANALYTE = "Chloride"
-SKIP_BLANK = False
-PROCESS_BLANK_FILES_SEPARATEDLY = False
+ANALYTE = "Alkalinity"
+SKIP_BLANK = True
+PROCESS_BLANK_FILES_SEPARATEDLY = True
 
 SAMPLES_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "train_samples", f"{ANALYTE}")
 SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "val_samples", f"{ANALYTE}")
@@ -39,7 +39,7 @@ elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == True: # process 
     SAVE_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank", "test")
 
 else:
-    print("Missmatch combinations \n SKIP_BLANK must be False for use separated blanks")
+    raise("Missmatch combinations \n SKIP_BLANK must be False for use separated blanks")
 
 #makes path dir
 os.makedirs(SAVE_TRAIN_PATH, exist_ok = True)

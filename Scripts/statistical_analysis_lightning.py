@@ -26,25 +26,21 @@ else:
     device = "cuda"
 
 # variables
-ANALYTE = "Chloride"
-SKIP_BLANK = False
+ANALYTE = "Alkalinity"
+SKIP_BLANK = True
 IMAGES_TO_EVALUATE = "test"
-CHECKPOINT_FILENAME = "Model_4.ckpt"
 
 if ANALYTE == "Alkalinity":
     EPOCHS = 1
     LR = 0.001
     LOSS_FUNCTION = torch.nn.MSELoss()
-    BATCH_SIZE = 64
+    #BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 1
     GRADIENT_CLIPPING_VALUE = 0.5
-    CHECKPOINT_SAVE_INTERVAL = 25
-    MODEL_VERSION = "Model_1"
-    MODEL_NETWORK = alkalinity.Model_1()
-    DATASET_SPLIT = 0.8
-    USE_CHECKPOINT = True
+    MODEL_VERSION = "Model_2"
+    MODEL_NETWORK = alkalinity.Model_2()
     RECEPTIVE_FIELD_DIM = 15
-    IMAGE_SHAPE = 97
+    IMAGE_SHAPE = 98
     IMAGE_SIZE = IMAGE_SHAPE * IMAGE_SHAPE # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
     DESCRIPTOR_DEPTH = 448
 
@@ -52,14 +48,12 @@ elif ANALYTE == "Chloride":
     EPOCHS = 1
     LR = 0.001
     LOSS_FUNCTION = torch.nn.MSELoss()
-    BATCH_SIZE = 64
+    #BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 1
     GRADIENT_CLIPPING_VALUE = 0.5
-    CHECKPOINT_SAVE_INTERVAL = 25
-    MODEL_VERSION = "Model_4"
-    MODEL_NETWORK = chloride.Model_4()
+    MODEL_VERSION = "Model_1"
+    MODEL_NETWORK = chloride.Model_1()
     DATASET_SPLIT = 0.8
-    USE_CHECKPOINT = False
     RECEPTIVE_FIELD_DIM = 27
     IMAGE_SHAPE = 86
     IMAGE_SIZE = IMAGE_SHAPE * IMAGE_SHAPE  # after the crop based on the receptive field  (shape = (112 - 27, 112 - 27))
@@ -76,7 +70,6 @@ if ANALYTE == "Phosphate":
     #MODEL_VERSION = "Model_1"
     #MODEL_NETWORK = alkalinity.Model_1
     DATASET_SPLIT = 0.8
-    USE_CHECKPOINT = True
     #RECEPTIVE_FIELD_DIM = 15
     #IMAGE_SIZE = 97 * 97  # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
     #DESCRIPTOR_DEPTH = 448
@@ -85,14 +78,13 @@ if ANALYTE == "Sulfate":
     EPOCHS = 1
     LR = 0.001
     LOSS_FUNCTION = torch.nn.MSELoss()
-    BATCH_SIZE = 64
+    #BATCH_SIZE = 64
     EVALUATION_BATCH_SIZE = 1
     GRADIENT_CLIPPING_VALUE = 0.5
     CHECKPOINT_SAVE_INTERVAL = 25
     #MODEL_VERSION = "Model_1"
     #MODEL_NETWORK = alkalinity.Model_1
     DATASET_SPLIT = 0.8
-    USE_CHECKPOINT = True
     #RECEPTIVE_FIELD_DIM = 15
     #IMAGE_SIZE = 97 * 97  # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
     #DESCRIPTOR_DEPTH = 448
@@ -111,6 +103,7 @@ else:
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
 
+CHECKPOINT_FILENAME = f"{MODEL_VERSION}.ckpt"
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)
 print('Using this checkpoint:', CHECKPOINT_PATH)
 
@@ -215,16 +208,16 @@ def evaluate(
 
 def get_min_max_values(dataset_for_inference):
 
-    if dataset_for_inference == 'train':
-        descriptor_root = os.path.join(DESCRIPTORS_ROOT, "train")
+    # if dataset_for_inference == 'train':
+    #     descriptor_root = os.path.join(DESCRIPTORS_ROOT, "train")
 
-    elif dataset_for_inference == 'test':
-        descriptor_root = os.path.join(DESCRIPTORS_ROOT, "test")
+    # elif dataset_for_inference == 'test':
+    #     descriptor_root = os.path.join(DESCRIPTORS_ROOT, "test")
 
-    else:
-        raise NotImplementedError
+    # else:
+    #     raise NotImplementedError
 
-    with open(os.path.join(descriptor_root, f'metadata_{dataset_for_inference}.json'), "r") as file:
+    with open(os.path.join(DESCRIPTORS_ROOT, f'metadata_{dataset_for_inference}.json'), "r") as file:
             metadata = json.load(file)
             total_samples = metadata['total_samples']
             image_size = metadata['image_size']
@@ -234,7 +227,7 @@ def get_min_max_values(dataset_for_inference):
 
     # reads the untyped storage object of saved descriptors
     #descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(descriptors_path, "descriptors.bin"), shared=False, nbytes=(dim * DESCRIPTOR_DEPTH) * torch.finfo(torch.float32).bits // 8)).view(IMAGE_SIZE * total_samples, DESCRIPTOR_DEPTH)
-    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_anotation_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
+    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(DESCRIPTORS_ROOT, f"descriptors_anotation_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
 
     # saves values for graph scale
     min_value = float(torch.min(expected_value[:]))

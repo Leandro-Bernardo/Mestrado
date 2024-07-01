@@ -3,6 +3,7 @@ import os
 import json
 import pytorch_lightning as pl
 import torch.nn as nn
+import numpy as np
 
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer
 from torch import FloatTensor, UntypedStorage
@@ -132,7 +133,7 @@ class BaseModel(LightningModule):
 
     def predict_step(self, batch, batch_idx):
         # change model to evaluation mode
-        model.eval()
+        #model.eval()
         # variables
         partial_loss = []
         predicted_value = []

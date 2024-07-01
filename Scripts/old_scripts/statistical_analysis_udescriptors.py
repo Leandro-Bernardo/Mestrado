@@ -43,7 +43,7 @@ elif ANALYTE == "Chloride":
     EVALUATION_BATCH_SIZE = 1
     GRADIENT_CLIPPING_VALUE = 0.5
     CHECKPOINT_SAVE_INTERVAL = 25
-    MODEL_VERSION = 'model_3'
+    MODEL_VERSION = 'model_1'
     DATASET_SPLIT = 0.8
     USE_CHECKPOINT = False
     RECEPTIVE_FIELD_DIM = 27
@@ -92,7 +92,7 @@ else:
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank")
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank")
-'F:\\Mestrado\\Scripts\\evaluation\\Chloride\\Udescriptors\\with_blank\\histogram\\model_3\\test\\sample_0.png'
+'F:\\Mestrado\\Scripts\\evaluation\\Chloride\\Udescriptors\\with_blank\\histogram\\model_1\\test\\sample_0.png'
 LAST_CHECKPOINT = sorted(os.listdir(os.path.join(CHECKPOINT_ROOT, MODEL_VERSION)), key = lambda x: int(x.split('_')[-1]))[-1]
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, MODEL_VERSION, LAST_CHECKPOINT)
 

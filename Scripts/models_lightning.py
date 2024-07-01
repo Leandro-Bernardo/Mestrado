@@ -19,10 +19,7 @@ else:
 #Variables
 ANALYTE = "Chloride"
 SKIP_BLANK = False
-USE_CHECKPOINT = False
-
-if USE_CHECKPOINT:
-    CHECKPOINT_FILENAME = "Model_4.ckpt"
+USE_CHECKPOINT = True
 
 if ANALYTE == "Alkalinity":
     MODEL_VERSION = "Model_2"
@@ -31,24 +28,24 @@ if ANALYTE == "Alkalinity":
     FINAL_EPOCH = 5000
     LR = 0.001
     LOSS_FUNCTION = torch.nn.MSELoss()
-    BATCH_SIZE = 64
     GRADIENT_CLIPPING_VALUE = 0.5
     #CHECKPOINT_SAVE_INTERVAL = 25
     IMAGE_SIZE = 97 * 97  # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
+    BATCH_SIZE = IMAGE_SIZE
     DESCRIPTOR_DEPTH = 448
 
 
 elif ANALYTE == "Chloride":
-    MODEL_VERSION = "Model_4"
-    MODEL_NETWORK = chloride.Model_4
+    MODEL_VERSION = "Model_1"
+    MODEL_NETWORK = chloride.Model_1
     FIRST_EPOCH = 0
     FINAL_EPOCH = 5000
     LR = 0.001
     LOSS_FUNCTION = torch.nn.MSELoss()
-    BATCH_SIZE = 256
     GRADIENT_CLIPPING_VALUE = 0.5
     #CHECKPOINT_SAVE_INTERVAL = 20
     IMAGE_SIZE = 86 * 86  # after the crop based on the receptive field  (shape = (112 - 27, 112 - 27))
+    BATCH_SIZE = IMAGE_SIZE
     DESCRIPTOR_DEPTH = 1472
 
 #defines path dir
@@ -70,9 +67,9 @@ os.makedirs(CHECKPOINT_ROOT, exist_ok =True)
 os.makedirs(LEARNING_VALUES_ROOT, exist_ok =True)
 
 if USE_CHECKPOINT:
-    #LAST_CHECKPOINT = sorted(os.listdir(os.path.join(CHECKPOINT_ROOT)))[-1]#sorted(os.listdir(os.path.join(CHECKPOINT_ROOT)), key=lambda x: int(x.split('-')[-1]))
+    CHECKPOINT_FILENAME = f"{MODEL_VERSION}.ckpt"
     CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)#f"{MODEL_VERSION}.ckpt")
-    #FIRST_EPOCH = int(CHECKPOINT_PATH.split('_')[-1]) + 1
+
 else:
     os.makedirs(os.path.join(CHECKPOINT_ROOT), exist_ok =True)
 
