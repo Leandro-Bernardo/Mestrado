@@ -4,10 +4,11 @@ import shutil
 
 from tqdm import tqdm
 
-ANALYTE = "Chloride"
-DATASET_SPLIT = 0.8
+ANALYTE = "Alkalinity"
+DATASET_TRAIN_TEST_SPLIT = 0.8
+DATASET_TRAIN_VAL_SPLIT = 0.8
 
-PATH = [f"F:\\Mestrado\\{ANALYTE}_Samples"]
+PATH = [f"Y:\\Leandro-Bernardo\\Mestrado\\{ANALYTE}_Samples"]
 SAVE_PATH = os.path.join(os.path.dirname(__file__), "..")
 def all_dirs(base_dirs):
     dirs = list()        # [dir, ...]
@@ -30,14 +31,22 @@ def all_dirs(base_dirs):
             pbar.update(1)
     return samples_dirs
 
-def split_folders(folders, split_ratio = DATASET_SPLIT , seed=42):
+def split_folders(folders, split_train_test_ratio = DATASET_TRAIN_TEST_SPLIT, split_train_val_ratio = DATASET_TRAIN_VAL_SPLIT, seed=42):
     random.seed(seed)
-    random.shuffle(folders)
-    split_index = int(len(folders) * split_ratio)
-    return folders[:split_index], folders[split_index:]
 
-def copy_files(folders, save_path):
-    for folder in tqdm(folders, desc="Copying files"):
+    # splits train and test
+    random.shuffle(folders)
+    split_index = int(len(folders) * split_train_test_ratio)
+    train_folders, test_folders = folders[:split_index], folders[split_index:]
+
+    # splits train and validation
+    random.shuffle(train_folders)
+    split_index = int(len(train_folders) * split_train_val_ratio)
+    train_folders, val_folders = train_folders[:split_index], train_folders[split_index:]
+    return train_folders, val_folders, test_folders
+
+def copy_files(folders, stage, save_path):
+    for folder in tqdm(folders, desc=f"Copying {stage} files"):
         destination_folder = os.path.join(save_path, os.path.basename(folder))
         os.makedirs(destination_folder, exist_ok=True)
         for filename in os.listdir(folder):
@@ -48,11 +57,11 @@ def copy_files(folders, save_path):
 
 def main():
     samples_paths = all_dirs(PATH)
-    train_split, test_split = split_folders(samples_paths)
+    train_folders, val_folders, test_folders = split_folders(samples_paths)
 
-    copy_files(train_split, os.path.join(SAVE_PATH, "train_samples", f"{ANALYTE}"))
-    copy_files(test_split, os.path.join(SAVE_PATH, "test_samples", f"{ANALYTE}"))
+    copy_files(train_folders, "train", os.path.join(SAVE_PATH, "train_samples", f"{ANALYTE}"))
+    copy_files(val_folders, "val", os.path.join(SAVE_PATH, "val_samples", f"{ANALYTE}"))
+    copy_files(test_folders, "test", os.path.join(SAVE_PATH, "test_samples", f"{ANALYTE}"))
 
 if __name__ == "__main__":
     main()
-print(' ')

@@ -17,7 +17,7 @@ else:
 # variables
 ANALYTE = "Chloride"
 SKIP_BLANK = False
-USE_CHECKPOINT = True
+USE_CHECKPOINT = False
 
 if ANALYTE == "Alkalinity":
     FIRST_EPOCH = 0
@@ -27,7 +27,6 @@ if ANALYTE == "Alkalinity":
     GRADIENT_CLIPPING_VALUE = 0.5
     CHECKPOINT_SAVE_INTERVAL = 25
     MODEL_VERSION = 'model_1'
-    DATASET_SPLIT = 0.8
     IMAGE_SIZE = 97 * 97  # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
     DESCRIPTOR_DEPTH = 448
 
@@ -39,8 +38,7 @@ elif ANALYTE == "Chloride":
     BATCH_SIZE = 64
     GRADIENT_CLIPPING_VALUE = 0.5
     CHECKPOINT_SAVE_INTERVAL = 2
-    MODEL_VERSION = 'model_4'
-    DATASET_SPLIT = 0.8
+    MODEL_VERSION = 'model_5'
     IMAGE_SIZE = 86 * 86  # after the crop based on the receptive field  (shape = (112 - 27, 112 - 27))
     DESCRIPTOR_DEPTH = 1472
 
@@ -88,7 +86,11 @@ if ANALYTE == "Alkalinity":
 elif ANALYTE == "Chloride":
     model = torch.nn.Sequential(
         #TODO aumentar camadas
-        torch.nn.Linear(in_features=1472, out_features=1024),
+        torch.nn.Linear(in_features=1472, out_features=4096),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=4096, out_features=2048),
+        torch.nn.ReLU(),
+        torch.nn.Linear(in_features=2048, out_features=1024),
         torch.nn.ReLU(),
         torch.nn.Linear(in_features=1024, out_features=512),
         torch.nn.ReLU(),
@@ -103,6 +105,21 @@ elif ANALYTE == "Chloride":
         torch.nn.Linear(in_features=32, out_features=1)
                                 ).to(device=device)
 
+    # model = torch.nn.Sequential(
+    #     torch.nn.Linear(in_features=1472, out_features=1024),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(in_features=1024, out_features=512),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(in_features=512, out_features=256),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(in_features=256, out_features=128),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(in_features=128, out_features=64),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(in_features=64, out_features=32),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(in_features=32, out_features=1)
+    #                             ).to(device=device)
 loss_fn = torch.nn.MSELoss()
 optimizer = torch.optim.SGD(params=model.parameters(), lr=LR)
 
