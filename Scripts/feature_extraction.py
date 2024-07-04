@@ -12,8 +12,8 @@ from torchvision.models import vgg11
 from torchvision.models.feature_extraction import create_feature_extractor
 
 # Variables
-ANALYTE = "Alkalinity"
-SKIP_BLANK = True
+ANALYTE = "Chloride"
+SKIP_BLANK = False
 
 if SKIP_BLANK:
     LOAD_TRAIN_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank", "train"))

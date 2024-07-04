@@ -13,9 +13,9 @@ from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideS
 #from chemical_analysis.phosphate import PhosphateSampleDataset, ProcessedPhosphateSampleDataset
 
 #variables
-ANALYTE = "Alkalinity"
-SKIP_BLANK = True
-PROCESS_BLANK_FILES_SEPARATEDLY = True
+ANALYTE = "Chloride"
+SKIP_BLANK = False
+PROCESS_BLANK_FILES_SEPARATEDLY = False
 
 SAMPLES_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "train_samples", f"{ANALYTE}")
 SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "val_samples", f"{ANALYTE}")

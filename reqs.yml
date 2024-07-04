@@ -1,0 +1,31 @@
+name: lb
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python
+  - pytorch # nvidia canal necessário para utilizar gpu
+  - torchvision
+  - torchaudio
+  - cudatoolkit
+  - pytorch-lightning #1.4.9 # projeto do encoder
+  - torchmetrics
+  - numpy
+  - wandb
+  - opencv # pip install opencv-contrib-python (Need to import cv2)
+  - pandas
+  - albumentations
+  - GitPython
+  - scikit-image
+  - scikit-learn
+  - scipy
+  - matplotlib
+  - seaborn
+  - pillow
+  - pyyaml
+  - git
+  - pip
+  - plotly
+  - xlsxwriter
+  # pip install fft-conv-pytorch

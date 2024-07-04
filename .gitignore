@@ -101,3 +101,5 @@ Scripts/lightning_logs/version_40/checkpoints/epoch=0-step=51772.ckpt
 Scripts/test
 
 Scripts/statistical_analysis_lightning (copy).py
+
+Scripts/.conda/.condatmp/
