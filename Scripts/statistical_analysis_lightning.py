@@ -18,7 +18,7 @@ from torch import FloatTensor, UntypedStorage
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 if not torch.cuda.is_available():
     assert("cuda isnt available")
 
@@ -26,9 +26,9 @@ else:
     device = "cuda"
 
 # variables
-ANALYTE = "Alkalinity"
-SKIP_BLANK = True
-IMAGES_TO_EVALUATE = "test"
+ANALYTE = "Chloride"
+SKIP_BLANK = False
+IMAGES_TO_EVALUATE = "train"
 
 if ANALYTE == "Alkalinity":
     EPOCHS = 1
@@ -129,15 +129,7 @@ os.makedirs(os.path.join(EVALUATION_ROOT, "test", "histogram", MODEL_VERSION), e
 os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_cnn1_output", MODEL_VERSION), exist_ok =True)
 os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_original_image", MODEL_VERSION), exist_ok =True)
 
-model = MODEL_NETWORK.to('cuda')
-loss_fn = LOSS_FUNCTION#torch.nn.MSELoss()
-optimizer = torch.optim.SGD(params=model.parameters(), lr=LR)
-
-checkpoint = torch.load(CHECKPOINT_PATH)
-model.load_state_dict(checkpoint['state_dict'], strict=False)
-optimizer.load_state_dict(checkpoint['optimizer_states'][0])
-
-# utilities functions and classes
+### Utilities functions and classes ###
 
 # loads datasets for evaluation
 def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_ROOT):
@@ -155,6 +147,12 @@ def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_
         expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(descriptor_root, f"descriptors_anotation_{dataset_for_inference}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
 
         return TensorDataset(descriptors.to("cuda"), expected_value.to("cuda"))
+
+# fix the state dict keys and loads it
+def load_state_dict(model: torch.nn.Module, checkpoint_state_dict: Dict ):
+    new_state_dict = {key.replace('model.', '') : value for key, value in checkpoint_state_dict.items()}
+
+    return model.load_state_dict(new_state_dict, strict=True)
 
 # train the model
 # def train_epoch(
@@ -179,7 +177,7 @@ def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_
 def evaluate(
             model: torch.nn,
             eval_loader: TensorDataset,
-            loss_fn: torch.nn = loss_fn) -> Tuple[np.array, np.array, np.array]:
+            loss_fn: torch.nn = LOSS_FUNCTION) -> Tuple[np.array, np.array, np.array]:
 
     model.eval()  # change model to evaluation mode
 
@@ -191,7 +189,7 @@ def evaluate(
     with torch.no_grad():
         for X_batch, y_batch in eval_loader:
 
-            y_pred = model(X_batch.unsqueeze(0))
+            y_pred = model(X_batch)
             y_pred = y_pred.squeeze()
             predicted_value.append(round(y_pred.item(), 2))
 
@@ -285,7 +283,19 @@ def main(dataset_for_inference):
     else:
         NotImplementedError
 
-    #training time
+    ### Loads model ###
+    model = MODEL_NETWORK.to('cuda')
+      #loss_fn = LOSS_FUNCTION#torch.nn.MSELoss()
+    optimizer = torch.optim.SGD(params=model.parameters(), lr=LR)
+
+    checkpoint = torch.load(CHECKPOINT_PATH)
+    try:
+        model.load_state_dict(checkpoint['state_dict'], strict=True)  # NOTE: Some checkpoints state dicts might not have the expected keys, as seen in  https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
+    except:
+        load_state_dict(model, checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_states'][0])
+
+    ### Training time ###
     # print("Training time")
     # for actual_epoch in tqdm(range(EPOCHS)):
     #     train_loss = train_epoch(model=model, train_loader=dataset, optimizer=optimizer, loss_fn=loss_fn)
@@ -295,7 +305,7 @@ def main(dataset_for_inference):
     # gets the model used
     #model = base_model.model.to('cuda')
 
-    #evaluation time
+    ### Evaluation time ###
     print("Evaluation time")
     partial_loss, predicted_value, expected_value = evaluate(model=model, eval_loader=dataset)
 
@@ -310,7 +320,7 @@ def main(dataset_for_inference):
         for line in column_array_values:
             file.write(f"{line[0]}, {line[1]}\n")
 
-    #histograms
+    ### Histograms ###
     print("calculating histograms of predictions\n")
     predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
     expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
