@@ -47,7 +47,7 @@ class Model_1(torch.nn.Module):
 
 
 class Model_2(torch.nn.Module):
-    def __init__(self, in_channels: int  = 1472, device: str = "cuda"):
+    def __init__(self, in_channels: int  = 3904, device: str = "cuda"):
         super().__init__()
 
         self.in_layer = nn.Sequential(

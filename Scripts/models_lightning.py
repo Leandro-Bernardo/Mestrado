@@ -1,6 +1,7 @@
 import torch
 import os
 import numpy as np
+import json
 
 from tqdm import tqdm
 from models import alkalinity, chloride
@@ -16,39 +17,34 @@ if not torch.cuda.is_available():
 else:
     device = "cuda"
 
-#Variables
-ANALYTE = "Chloride"
-SKIP_BLANK = False
-USE_CHECKPOINT = True
+### Variables ###
+# reads setting`s json
+with open(os.path.join(".", "settings.json"), "r") as file:
+    settings = json.load(file)
 
-if ANALYTE == "Alkalinity":
-    MODEL_VERSION = "Model_2"
-    MODEL_NETWORK = alkalinity.Model_2
-    FIRST_EPOCH = 0
-    FINAL_EPOCH = 5000
-    LR = 0.001
-    LOSS_FUNCTION = torch.nn.MSELoss()
-    GRADIENT_CLIPPING_VALUE = 0.5
-    #CHECKPOINT_SAVE_INTERVAL = 25
-    IMAGE_SIZE = 97 * 97  # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
-    BATCH_SIZE = IMAGE_SIZE
-    DESCRIPTOR_DEPTH = 448
+    ANALYTE = settings["analyte"]
+    SKIP_BLANK = settings["skip_blank"]
+    MODEL_VERSION = settings["network_model"]
+    USE_CHECKPOINT = settings["use_checkpoint"]
+    FEATURE_EXTRACTOR = settings["feature_extractor"]
 
+    # training hyperparams
+    MAX_EPOCHS = settings["models"]["max_epochs"]
+    LR = settings["models"]["learning_rate"]
+    LOSS_FUNCTION = settings["models"]["loss_function"]
+    GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
+    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]**2   # uses all the descriptors from an single image as a batch
 
-elif ANALYTE == "Chloride":
-    MODEL_VERSION = "Model_1"
-    MODEL_NETWORK = chloride.Model_1
-    FIRST_EPOCH = 0
-    FINAL_EPOCH = 5000
-    LR = 0.001
-    LOSS_FUNCTION = torch.nn.MSELoss()
-    GRADIENT_CLIPPING_VALUE = 0.5
-    #CHECKPOINT_SAVE_INTERVAL = 20
-    IMAGE_SIZE = 86 * 86  # after the crop based on the receptive field  (shape = (112 - 27, 112 - 27))
-    BATCH_SIZE = IMAGE_SIZE
-    DESCRIPTOR_DEPTH = 1472
+networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1,
+                                  "model_2": alkalinity.Model_2},
+                    "Chloride": {"model_1": chloride.Model_1,
+                                 "model_2": chloride.Model_2}}
+MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION]
 
-#defines path dir
+loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
+LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
+
+# defines path dir
 if SKIP_BLANK:
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank")
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank",  "train" ))
@@ -73,14 +69,14 @@ if USE_CHECKPOINT:
 else:
     os.makedirs(os.path.join(CHECKPOINT_ROOT), exist_ok =True)
 
+### Main ###
 def main():
 
+    # define checkpoint path and monitor
     checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
 
-    #train_dataset = PrepareDataset(descriptors_root= DESCRIPTORS_ROOT, stage="train")
-    #val_dataset = PrepareDataset(descriptors_root= DESCRIPTORS_ROOT, stage="val")
-
-    data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=2)
+    # load data module
+    data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=4)
 
     if USE_CHECKPOINT:
         model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR,  learning_rate_patience=10, checkpoint_path=CHECKPOINT_PATH)
@@ -88,12 +84,12 @@ def main():
     else:
         model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR, learning_rate_patience=10)
 
-    #trains the model
+    # train the model
     trainer = Trainer(
                       accelerator="cuda",
-                      max_epochs=FINAL_EPOCH,
+                      max_epochs=MAX_EPOCHS,
                       callbacks=checkpoint_callback,
-                      gradient_clip_val=0.5,
+                      gradient_clip_val= GRADIENT_CLIPPING,
                       gradient_clip_algorithm="value",  # https://lightning.ai/docs/pytorch/stable/advanced/training_tricks.html#gradient-clipping
                       log_every_n_steps=1,
                       num_sanity_val_steps=0,

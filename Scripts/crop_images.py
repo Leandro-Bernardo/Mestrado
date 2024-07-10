@@ -12,10 +12,14 @@ from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideS
 #from chemical_analysis.sulfate import SulfateSampleDataset, ProcessedSulfateSampleDataset
 #from chemical_analysis.phosphate import PhosphateSampleDataset, ProcessedPhosphateSampleDataset
 
-#variables
-ANALYTE = "Chloride"
-SKIP_BLANK = False
-PROCESS_BLANK_FILES_SEPARATEDLY = False
+### Variables ###
+# reads setting`s json
+with open(os.path.join(".", "settings.json"), "r") as file:
+    settings = json.load(file)
+
+    ANALYTE = settings["analyte"]
+    SKIP_BLANK = settings["skip_blank"]
+    PROCESS_BLANK_FILES_SEPARATEDLY = settings["process_blank_files_separatedly"]
 
 SAMPLES_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "train_samples", f"{ANALYTE}")
 SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "val_samples", f"{ANALYTE}")

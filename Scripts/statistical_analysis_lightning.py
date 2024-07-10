@@ -25,69 +25,43 @@ if not torch.cuda.is_available():
 else:
     device = "cuda"
 
-# variables
-ANALYTE = "Chloride"
-SKIP_BLANK = False
-IMAGES_TO_EVALUATE = "train"
+### Variables ###
+# reads setting`s json
+with open(os.path.join(".", "settings.json"), "r") as file:
+    settings = json.load(file)
 
-if ANALYTE == "Alkalinity":
-    EPOCHS = 1
-    LR = 0.001
-    LOSS_FUNCTION = torch.nn.MSELoss()
-    #BATCH_SIZE = 64
-    EVALUATION_BATCH_SIZE = 1
-    GRADIENT_CLIPPING_VALUE = 0.5
-    MODEL_VERSION = "Model_2"
-    MODEL_NETWORK = alkalinity.Model_2()
-    RECEPTIVE_FIELD_DIM = 15
-    IMAGE_SHAPE = 98
-    IMAGE_SIZE = IMAGE_SHAPE * IMAGE_SHAPE # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
-    DESCRIPTOR_DEPTH = 448
+    # global variables
+    ANALYTE = settings["analyte"]
+    SKIP_BLANK = settings["skip_blank"]
+    MODEL_VERSION = settings["network_model"]
+    FEATURE_EXTRACTOR = settings["feature_extractor"]
 
-elif ANALYTE == "Chloride":
-    EPOCHS = 1
-    LR = 0.001
-    LOSS_FUNCTION = torch.nn.MSELoss()
-    #BATCH_SIZE = 64
-    EVALUATION_BATCH_SIZE = 1
-    GRADIENT_CLIPPING_VALUE = 0.5
-    MODEL_VERSION = "Model_1"
-    MODEL_NETWORK = chloride.Model_1()
-    DATASET_SPLIT = 0.8
-    RECEPTIVE_FIELD_DIM = 27
-    IMAGE_SHAPE = 86
-    IMAGE_SIZE = IMAGE_SHAPE * IMAGE_SHAPE  # after the crop based on the receptive field  (shape = (112 - 27, 112 - 27))
-    DESCRIPTOR_DEPTH = 1472
+    # training hyperparams variables
+    MAX_EPOCHS = settings["models"]["max_epochs"]
+    LR = settings["models"]["learning_rate"]
+    LOSS_FUNCTION = settings["models"]["loss_function"]
+    GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
+    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]**2   # uses all the descriptors from an single image as a batch
 
-if ANALYTE == "Phosphate":
-    EPOCHS = 1
-    LR = 0.001
-    LOSS_FUNCTION = torch.nn.MSELoss()
-    BATCH_SIZE = 64
+    # evaluation variables
+    #EPOCHS = 1  #training epochs. Disabled
     EVALUATION_BATCH_SIZE = 1
-    GRADIENT_CLIPPING_VALUE = 0.5
-    CHECKPOINT_SAVE_INTERVAL = 25
-    #MODEL_VERSION = "Model_1"
-    #MODEL_NETWORK = alkalinity.Model_1
-    DATASET_SPLIT = 0.8
-    #RECEPTIVE_FIELD_DIM = 15
-    #IMAGE_SIZE = 97 * 97  # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
-    #DESCRIPTOR_DEPTH = 448
+    IMAGES_TO_EVALUATE = settings["statistical_analysis"]["images_to_evaluate"]
+    RECEPTIVE_FIELD_DIM = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["receptive_field_dim"]
+    DESCRIPTOR_DEPTH = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["descriptor_depth"]
+    IMAGE_SHAPE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]
+    IMAGE_SIZE = IMAGE_SHAPE * IMAGE_SHAPE  # after the crop based on the receptive field
 
-if ANALYTE == "Sulfate":
-    EPOCHS = 1
-    LR = 0.001
-    LOSS_FUNCTION = torch.nn.MSELoss()
-    #BATCH_SIZE = 64
-    EVALUATION_BATCH_SIZE = 1
-    GRADIENT_CLIPPING_VALUE = 0.5
-    CHECKPOINT_SAVE_INTERVAL = 25
-    #MODEL_VERSION = "Model_1"
-    #MODEL_NETWORK = alkalinity.Model_1
-    DATASET_SPLIT = 0.8
-    #RECEPTIVE_FIELD_DIM = 15
-    #IMAGE_SIZE = 97 * 97  # after the crop based on the receptive field  (shape = (112 - 15, 112 - 15))
-    #DESCRIPTOR_DEPTH = 448
+
+networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1,
+                                  "model_2": alkalinity.Model_2},
+                    "Chloride": {"model_1": chloride.Model_1,
+                                 "model_2": chloride.Model_2}}
+MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION]
+
+loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
+LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
+
 
 if SKIP_BLANK:
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank"))
@@ -113,7 +87,6 @@ EXPECTED_RANGE = {
                 "Phosphate": (0.0, 50.0),
                 "Sulfate":(0.0, 4000.0),
                  }
-
 
 
 #creates directories
