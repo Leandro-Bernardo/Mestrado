@@ -52,7 +52,7 @@ os.makedirs(SAVE_TEST_PATH, exist_ok = True)
 os.makedirs(CACHE_PATH, exist_ok = True)
 
 
-def main(sample_path, save_path):
+def main(sample_path: str, save_path: str, stage:str):
     dataset_processor = {"Alkalinity":{"dataset": AlkalinitySampleDataset, "processed_dataset": ProcessedAlkalinitySampleDataset},
                         "Chloride": {"dataset": ChlorideSampleDataset, "processed_dataset": ProcessedChlorideSampleDataset},
                         #"Sulfate": {"dataset": SulfateSampleDataset, "processed_dataset": ProcessedSulfateSampleDataset},
@@ -103,7 +103,7 @@ def main(sample_path, save_path):
     count_of_valid_samples = 0
     for i, _ in enumerate(processed_samples):
         try:
-            print(f"Image {i}, total: {len(processed_samples)}")
+            print(f" Cropping images from {stage} samples {i+1}/{len(processed_samples)}")
 
             #gets the mask for that sample
             mask =  processed_samples[i].sample_analyte_mask
@@ -147,6 +147,6 @@ def main(sample_path, save_path):
 
 
 if __name__ == "__main__":
-    main(SAMPLES_TRAIN_PATH, SAVE_TRAIN_PATH)
-    main(SAMPLES_VAL_PATH, SAVE_VAL_PATH)
-    main(SAMPLES_TEST_PATH, SAVE_TEST_PATH)
+    main(SAMPLES_TRAIN_PATH, SAVE_TRAIN_PATH, "train")
+    main(SAMPLES_VAL_PATH, SAVE_VAL_PATH, "validation")
+    main(SAMPLES_TEST_PATH, SAVE_TEST_PATH, "test")
