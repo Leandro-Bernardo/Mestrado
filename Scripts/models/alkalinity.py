@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 
 class Model_1(torch.nn.Module):
-    def __init__():
+    def __init__(self):
         pass
     pass
 

@@ -34,6 +34,7 @@
             "learning_rate": 0.001,
             "gradient_clipping": 0.5,
             "loss_function": "mean_squared_error",
-            "batch_size": null
+            "batch_size": null,
+            "batch_normalization": true
            },
 "statistical_analysis": {"images_to_evaluate": "train"}}
