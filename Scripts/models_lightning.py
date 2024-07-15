@@ -17,6 +17,9 @@ if not torch.cuda.is_available():
 else:
     device = "cuda"
 
+# reduces mat mul precision (for performance)
+torch.set_float32_matmul_precision('medium')
+
 ### Variables ###
 # reads setting`s json
 with open(os.path.join(".", "settings.json"), "r") as file:
