@@ -45,6 +45,7 @@ def main():
         nodes.append(node)
 
     print(f"List of nodes: \n{json.dumps(nodes)}")
+    print(f"\nCNN blocks: {len(nodes)}")
 
     ### extract features ###
     # load an image
@@ -75,7 +76,7 @@ def main():
     #sample_features = torch.reshape(sample_features, (-1, DESCRIPTOR_DEPTH))
 
     print(f"\nDescriptor Depth: \n{json.dumps(sample_features.shape[-1])}")
-    print(" ")
+
     # disabled auto save
     # settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["feature_list"] = nodes
 
