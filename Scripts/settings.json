@@ -2,7 +2,7 @@
  "skip_blank": false,
  "process_blank_files_separatedly": false,
  "feature_extractor": "resnet50",
- "network_model": "model_2",
+ "network_model": "model_3",
  "use_checkpoint": false,
 
  "feature_extraction": {
@@ -21,9 +21,9 @@
                                                    "receptive_field_dim": null,
                                                    "descriptor_depth"   : null,
                                                    "image_shape"        : null},
-                                    "Chloride"  : {"feature_list": ["relu", "layer1.2.relu_2", "layer2.3.relu_2", "layer3.5.relu_2", "layer4.2.relu_2"],
+                                    "Chloride"  : {"feature_list": ["relu", "layer1.2.relu_2", "layer2.3.relu_2", "layer3.5.relu_2"],
                                                    "receptive_field_dim": 0,
-                                                   "descriptor_depth"   : 3904,
+                                                   "descriptor_depth"   : 1856,
                                                    "image_shape"        : 112}
                                    }
 
