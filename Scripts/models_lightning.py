@@ -1,7 +1,7 @@
 import torch
 import os
 import numpy as np
-import json
+import json, yaml
 
 from tqdm import tqdm
 from models import alkalinity, chloride
@@ -22,8 +22,8 @@ torch.set_float32_matmul_precision('high')
 
 ### Variables ###
 # reads setting`s json
-with open(os.path.join(".", "settings.json"), "r") as file:
-    settings = json.load(file)
+with open(os.path.join(".", "settings.yaml"), "r") as file:
+    settings = yaml.load(file, Loader=yaml.FullLoader)
 
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]

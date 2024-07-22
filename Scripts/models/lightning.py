@@ -80,8 +80,8 @@ class BaseModel(LightningModule):
         optmizer = SGD(self.parameters(), lr = self.learning_rate)
         scheduler = ReduceLROnPlateau(optmizer, mode='min', patience=self.learning_rate_patience)
 
-        return optmizer
-        #return {"optimizer": optmizer, "lr_schedule": {"scheduler": scheduler, "monitor": "Loss/Val"}}
+        #return optmizer
+        return {"optimizer": optmizer, "lr_schedule": {"scheduler": scheduler, "monitor": "Loss/Val"}}
 
     # def configure_callbacks(self) -> List[Callback]:
     # # Apply early stopping.

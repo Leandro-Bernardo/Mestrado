@@ -2,7 +2,7 @@ import chemical_analysis as ca
 import matplotlib.pyplot as plt
 import cv2
 import numpy as np
-import json
+import json, yaml
 import os
 
 from typing import Tuple, List, Dict, Any
@@ -14,8 +14,8 @@ from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideS
 
 ### Variables ###
 # reads setting`s json
-with open(os.path.join(".", "settings.json"), "r") as file:
-    settings = json.load(file)
+with open(os.path.join(".", "settings.yaml"), "r") as file:
+    settings = yaml.load(file, Loader=yaml.FullLoader)
 
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]

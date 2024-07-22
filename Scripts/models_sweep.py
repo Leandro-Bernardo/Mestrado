@@ -1,7 +1,7 @@
 import torch
 import os
 import numpy as np
-import json
+import json, yaml
 import wandb
 
 from wandb.wandb_run import Run
@@ -12,6 +12,7 @@ from models.lightning import DataModule, BaseModel
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 if not torch.cuda.is_available():
     assert("cuda isnt available")
@@ -26,9 +27,9 @@ os.environ["WANDB_CONSOLE"] = "off"  # Needed to avoid "ValueError: signal only 
 torch.set_float32_matmul_precision('high')
 
 ### Variables ###
-# reads setting`s json
-with open(os.path.join(".", "settings.json"), "r") as file:
-    settings = json.load(file)
+# reads setting`s yaml
+with open(os.path.join(".", "settings.yaml"), "r") as file:
+    settings = yaml.load(file, Loader=yaml.FullLoader)
 
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]
@@ -42,6 +43,10 @@ with open(os.path.join(".", "settings.json"), "r") as file:
     LOSS_FUNCTION = settings["models"]["loss_function"]
     GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
     BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]**2   # uses all the descriptors from an single image as a batch
+
+# reads sweep configs yaml
+with open('./sweep_config.yaml') as file:
+        SWEEP_CONFIGS = yaml.load(file, Loader=yaml.FullLoader)
 
 networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1,
                                   "model_2": alkalinity.Model_2},
@@ -85,9 +90,10 @@ def main():
     # starts wandb
     with wandb.init() as run:
         assert isinstance(run, Run)
+        # initialize logger
+        logger = WandbLogger(project=ANALYTE, experiment=run, save_dir=LOG_PATH)
         # define checkpoint path and monitor
         checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
-
         # load data module
         data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=2)
 
@@ -99,10 +105,16 @@ def main():
 
         # train the model
         trainer = Trainer(
-                        logger=WandbLogger(project= ANALYTE, experiment=run, save_dir=LOG_PATH),
+                        logger= logger,
                         accelerator="cuda",
                         max_epochs=MAX_EPOCHS,
-                        callbacks= [checkpoint_callback, LearningRateMonitor(logging_interval='epoch')],
+                        callbacks= [checkpoint_callback,
+                                    LearningRateMonitor(logging_interval='epoch'),
+                                    EarlyStopping(
+                                                monitor="Loss/Train",
+                                                mode="min",
+                                                patience=20
+                                            ),],
                         gradient_clip_val= GRADIENT_CLIPPING,
                         gradient_clip_algorithm="value",  # https://lightning.ai/docs/pytorch/stable/advanced/training_tricks.html#gradient-clipping
                         log_every_n_steps=1,
@@ -111,7 +123,9 @@ def main():
                         )
 
         trainer.fit(model=model, datamodule=data_module)#, train_dataloaders=dataset
-        trainer.test(model, datamodule=data_module)
+        trainer.test(model, datamodule=data_module, ckpt_path=None)
+
+        #wandb.save(LOG_PATH)#
 
 if __name__ == "__main__":
     if USE_CHECKPOINT:

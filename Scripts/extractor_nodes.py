@@ -1,7 +1,7 @@
 import os
 import torch
 import torchvision
-import json
+import json, yaml
 import cv2
 
 from torchvision.models.feature_extraction import get_graph_node_names
@@ -11,8 +11,8 @@ from torchvision.models.feature_extraction import create_feature_extractor
 
 ### Variables ###
 # reads setting`s json
-with open(os.path.join(".", "settings.json"), "r") as file:
-    settings = json.load(file)
+with open(os.path.join(".", "settings.yaml"), "r") as file:
+    settings = yaml.load(file, Loader=yaml.FullLoader)
 
     ANALYTE = settings["analyte"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
