@@ -30,6 +30,7 @@ with open(os.path.join(".", "settings.json"), "r") as file:
     MODEL_VERSION = settings["network_model"]
     USE_CHECKPOINT = settings["use_checkpoint"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
+    CNN_BLOCKS = settings["cnn_blocks"]
 
     # training hyperparams
     MAX_EPOCHS = settings["models"]["max_epochs"]
@@ -50,16 +51,16 @@ LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
 
 # defines path dir
 if SKIP_BLANK:
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank",  "train" ))
-    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}")
-    LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 
 else:
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank",  "train"))
-    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}")
-    LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 
 
 # creates directories
@@ -67,7 +68,7 @@ os.makedirs(CHECKPOINT_ROOT, exist_ok =True)
 os.makedirs(LEARNING_VALUES_ROOT, exist_ok =True)
 
 if USE_CHECKPOINT:
-    CHECKPOINT_FILENAME = f"{MODEL_VERSION}.ckpt"
+    CHECKPOINT_FILENAME = f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"
     CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)#f"{MODEL_VERSION}.ckpt")
 
 else:
@@ -77,7 +78,7 @@ else:
 def main():
 
     # define checkpoint path and monitor
-    checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
+    checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}({CNN_BLOCKS}_blocks)", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
 
     # load data module
     data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=2)
