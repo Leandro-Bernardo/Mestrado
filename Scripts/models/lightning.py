@@ -115,7 +115,7 @@ class BaseModel(LightningModule):
 
     def _any_epoch_end(self, stage: str):
         metrics: MetricCollection = self.metrics[stage]  # type: ignore
-        self.log_dict({f'{metric_name}/{stage}/Epoch': value for metric_name, value in metrics.compute().items()})
+        self.log_dict({f'{metric_name}/{stage}/Epoch': value for metric_name, value in metrics.compute().items()}, on_step=False, on_epoch=True) # logs metrics on epoch end
         metrics.reset()
         # Print loss at the end of each epoch
         #loss = self.trainer.callback_metrics[f"Loss/{stage}"]
