@@ -57,7 +57,8 @@ with open(os.path.join(".", "settings.json"), "r") as file:
 networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                   "model_2": alkalinity.Model_2()},
                     "Chloride": {"model_1": chloride.Model_1(),
-                                 "model_2": chloride.Model_2()}}
+                                 "model_2": chloride.Model_2(),
+                                 "model_3": chloride.Model_3(),}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -78,7 +79,7 @@ else:
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
 
-CHECKPOINT_FILENAME = f"{MODEL_VERSION}({CNN_BLOCKS}_blocks)).ckpt"
+CHECKPOINT_FILENAME = f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)
 print('Using this checkpoint:', CHECKPOINT_PATH)
 
@@ -298,73 +299,73 @@ def main(dataset_for_inference):
             file.write(f"{line[0]}, {line[1]}\n")
 
     # ### Histograms ###
-    # print("calculating histograms of predictions\n")
-    # predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
-    # expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
+    print("calculating histograms of predictions\n")
+    predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
+    expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
 
-    # min_value, max_value = get_min_max_values(dataset_for_inference)
+    min_value, max_value = get_min_max_values(dataset_for_inference)
 
-    # for i in range(len_mode):
-    #     values = np.array(predicted_value_for_samples[f'sample_{i}']).flatten() #flattens for histogram calculation
-    #     stats = Statistics(predicted_value_for_samples[f'sample_{i}'], expected_value_from_samples[f'sample_{i}'])
-    #     plt.figure(figsize=(15, 8))
+    for i in range(len_mode):
+        values = np.array(predicted_value_for_samples[f'sample_{i}']).flatten() #flattens for histogram calculation
+        stats = Statistics(predicted_value_for_samples[f'sample_{i}'], expected_value_from_samples[f'sample_{i}'])
+        plt.figure(figsize=(15, 8))
 
-    #     #counts, bins = np.unique(values, return_counts = True)
-    #     bins = int(math.ceil(max_value/(EXPECTED_RANGE[ANALYTE][0]*0.1/2))) #valor maximo do analito / metade do pior erro relativo (10% do menor valor esperado)
-    #     plt.hist(values, bins = bins, range = (min_value, max_value), color='black')
+        #counts, bins = np.unique(values, return_counts = True)
+        bins = int(math.ceil(max_value/(EXPECTED_RANGE[ANALYTE][0]*0.1/2))) #valor maximo do analito / metade do pior erro relativo (10% do menor valor esperado)
+        plt.hist(values, bins = bins, range = (min_value, max_value), color='black')
 
-    #     # adds vertical lines for basic statistic values
-    #     plt.axvline(x = stats.mean, alpha = 0.5, c = 'red')
-    #     plt.axvline(x = stats.median, alpha = 0.5, c = 'blue')
-    #     #plt.axvline(x = stats.mode, alpha = 0.5, c = 'green')
+        # adds vertical lines for basic statistic values
+        plt.axvline(x = stats.mean, alpha = 0.5, c = 'red')
+        plt.axvline(x = stats.median, alpha = 0.5, c = 'blue')
+        #plt.axvline(x = stats.mode, alpha = 0.5, c = 'green')
 
-    #     plt.title(f"Sample_{i }, Expected Value: {round(expected_value_from_samples[f'sample_{i}'][0][0], 2)}")
-    #     plt.xlabel('Prediction')
-    #     plt.ylabel('Count')
+        plt.title(f"Sample_{i }, Expected Value: {round(expected_value_from_samples[f'sample_{i}'][0][0], 2)}")
+        plt.xlabel('Prediction')
+        plt.ylabel('Count')
 
-    #     # defines x axis limits
-    #     x_min, x_max = min_value, max_value
-    #     plt.xlim((x_min, x_max))
+        # defines x axis limits
+        x_min, x_max = min_value, max_value
+        plt.xlim((x_min, x_max))
 
-    #     # get the limits from y axis (which is count based)
-    #     y_min, y_max = plt.ylim()
+        # get the limits from y axis (which is count based)
+        y_min, y_max = plt.ylim()
 
-    #     # Defines a scale factor for positions in y axis
-    #     scale_factor = 0.08 * y_max
+        # Defines a scale factor for positions in y axis
+        scale_factor = 0.08 * y_max
 
-    #     #TODO FIX THIS LATER
-    #     if ANALYTE == "Alkalinity":
-    #         text = 210
-    #         text_median = 240
-    #     if ANALYTE == "Chloride":
-    #         text = 10000
-    #         text_median = 12000
-    #     #text settings
-    #     plt.text(x = x_max+0.5,  y=y_max - 10.20 * scale_factor,
-    #             s = f" mean:")
+        #TODO FIX THIS LATER
+        if ANALYTE == "Alkalinity":
+            text = 210
+            text_median = 240
+        if ANALYTE == "Chloride":
+            text = 10000
+            text_median = 12000
+        #text settings
+        plt.text(x = x_max+0.5,  y=y_max - 10.20 * scale_factor,
+                s = f" mean:")
 
-    #     plt.text(x = x_max + text, y=y_max - 10.20 * scale_factor,
-    #             s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
+        plt.text(x = x_max + text, y=y_max - 10.20 * scale_factor,
+                s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
 
-    #     plt.text(x = x_max ,  y=y_max - 10.49 * scale_factor,
-    #             s = f" median:" )
+        plt.text(x = x_max ,  y=y_max - 10.49 * scale_factor,
+                s = f" median:" )
 
-    #     plt.text(x = x_max + text_median, y=y_max - 10.49 * scale_factor,
-    #             s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
+        plt.text(x = x_max + text_median, y=y_max - 10.49 * scale_factor,
+                s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
 
-    #     plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
-    #             s = f" mode:" )
+        plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
+                s = f" mode:" )
 
-    #     plt.text(x = x_max + text,  y=y_max - 10.78 * scale_factor,
-    #             s = f" {stats.mode:.2f}", c = 'black', alpha = 0.6)
+        plt.text(x = x_max + text,  y=y_max - 10.78 * scale_factor,
+                s = f" {stats.mode:.2f}", c = 'black', alpha = 0.6)
 
-    #     plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
-    #             s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}", c = 'black')
+        plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
+                s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}", c = 'black')
 
-    #     #plt.text(x = max_value + 0.5,  y = 0,
-    #     #         s = f" mean: {stats.mean:.2f}\n median: {stats.median:.2f}\n mode: {stats.mode:.2f}\n var: {stats.variance:.2f}\n std: {stats.std:.2f}\n min: {stats.min_value:.2f}\n max: {stats.max_value:.2f}")
-    #     plt.savefig(os.path.join(save_histogram_path, f"sample_{i}.png"))
-    #     plt.close('all')
+        #plt.text(x = max_value + 0.5,  y = 0,
+        #         s = f" mean: {stats.mean:.2f}\n median: {stats.median:.2f}\n mode: {stats.mode:.2f}\n var: {stats.variance:.2f}\n std: {stats.std:.2f}\n min: {stats.min_value:.2f}\n max: {stats.max_value:.2f}")
+        plt.savefig(os.path.join(save_histogram_path, f"sample_{i}.png"))
+        plt.close('all')
 
     # reshapes to the size of the output from the first cnn in vgg11  and the total of images
     print("reshaping images to match cnn1 output\n")
@@ -402,5 +403,5 @@ def main(dataset_for_inference):
 
 
 if __name__ == "__main__":
-    #main(dataset_for_inference="train")
-    main(dataset_for_inference="test")
+    main(dataset_for_inference="train")
+    #main(dataset_for_inference="test")
