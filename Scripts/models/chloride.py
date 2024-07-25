@@ -100,10 +100,13 @@ class Model_2(torch.nn.Module):
 
 
 class Model_3(torch.nn.Module):
-    def __init__(self, in_channels: int = 1856, device: str = "cuda", dropout_p:float = 0.5):
+    def __init__(self, in_channels: int = 1856, device: str = "cuda"):
         super().__init__()
 
-        self.dropout = nn.Dropout(p=dropout_p)
+        self.dropoutL1 = nn.Dropout(p=0.5)
+        self.dropoutL2 = nn.Dropout(p=0.4)
+        self.dropoutL3 = nn.Dropout(p=0.3)
+        self.dropoutL4 = nn.Dropout(p=0.2)
 
         device: str = "cuda"
         self.in_layer = nn.Sequential(
@@ -136,13 +139,13 @@ class Model_3(torch.nn.Module):
     def forward(self, x: torch.Tensor):
         x = self.in_layer(x)
         x = self.l1(x)
-        x = self.dropout(x)
+        x = self.dropoutL1(x)
         x = self.l2(x)
-        x = self.dropout(x)
+        x = self.dropoutL2(x)
         x = self.l3(x)
-        x = self.dropout(x)
+        x = self.dropoutL3(x)
         x = self.l4(x)
-        x = self.dropout(x)
+        x = self.dropoutL4(x)
         x = self.l5(x)
         x = self.output_layer(x)
 
