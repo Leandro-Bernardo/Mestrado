@@ -2,9 +2,8 @@
  "skip_blank": false,
  "process_blank_files_separatedly": false,
  "feature_extractor": "resnet50",
- "cnn_blocks": 4,
  "network_model": "model_3",
- "use_checkpoint": true,
+ "use_checkpoint": false,
 
  "feature_extraction": {
                         "vgg11":   {
