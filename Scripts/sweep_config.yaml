@@ -1,0 +1,25 @@
+program: models_sweep.py
+method: bayes
+name: Chloride
+metric:
+  name: Loss/Val
+  goal: minimize
+  name: MAE/Val/Epoch
+  goal: minimize
+  name: MAPE/Val/Epoch
+  goal: minimize
+parameters:
+  batch_size:
+    min: 100
+    max: 2000
+  lr:
+    max: 0.001
+    min: 0.0000000000001
+
+  # weight_decay:
+  #   max: 0.1e-1
+  #   min: 0.1e-5
+  optimizer:
+    value: sgd
+  criterion:
+    value: Loss/Train
