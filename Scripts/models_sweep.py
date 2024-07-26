@@ -37,6 +37,8 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     USE_CHECKPOINT = settings["use_checkpoint"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
+    PROJECT_NAME = settings["project_name"]
+    SWEEP_ID = settings["sweep_id"]
 
     # training hyperparams
     MAX_EPOCHS = settings["models"]["max_epochs"]
@@ -72,12 +74,12 @@ else:
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 
-LOG_PATH = os.path.join(os.path.dirname(__file__), "logs")
+#LOG_PATH = os.path.join(os.path.dirname(__file__), "logs")
 
 # creates directories
 os.makedirs(CHECKPOINT_ROOT, exist_ok =True)
 os.makedirs(LEARNING_VALUES_ROOT, exist_ok =True)
-os.makedirs(LOG_PATH, exist_ok=True)
+#os.makedirs(LOG_PATH, exist_ok=True)
 
 if USE_CHECKPOINT:
     CHECKPOINT_FILENAME = f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"
@@ -89,14 +91,16 @@ else:
 ### Main ###
 def main():
     # starts wandb
-    with wandb.init() as run:
+    with wandb.init(config=SWEEP_CONFIGS) as run:
         assert isinstance(run, Run)
         # initialize logger
-        logger = WandbLogger(project=ANALYTE, experiment=run, save_dir=LOG_PATH)
+        logger = WandbLogger(project=ANALYTE, experiment=run)
         # initialize sweep ID
-        sweep_id = wandb.sweep(SWEEP_CONFIGS, project="Mestrado")
+        #sweep_id = wandb.sweep(SWEEP_CONFIGS, project=PROJECT_NAME)
+        # initialize wandb agent
+        #wandb.agent(SWEEP_ID)
         # define checkpoint path and monitor
-        checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}({CNN_BLOCKS}_blocks)", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
+        checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}({CNN_BLOCKS}_blocks)", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
         # load data module
         data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=2)
 
@@ -126,9 +130,9 @@ def main():
                         )
 
         trainer.fit(model=model, datamodule=data_module)#, train_dataloaders=dataset
-        trainer.test(model, datamodule=data_module, ckpt_path=None)
+        trainer.test(model, datamodule=data_module, ckpt_path=None) #ckpt_path=None takes the best model saved
 
-        #wandb.save(LOG_PATH)#
+        wandb.save(os.path.join(CHECKPOINT_PATH, MODEL_VERSION, "({CNN_BLOCKS}_blocks)"))#
 
 if __name__ == "__main__":
     if USE_CHECKPOINT:
