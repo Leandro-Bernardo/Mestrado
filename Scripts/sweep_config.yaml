@@ -10,15 +10,15 @@ metric:
   goal: minimize
 parameters:
   batch_size:
-    min: 100
-    max: 2000
+    min: 2000
+    max: 20000
   lr:
     max: 0.001
     min: 0.0000000000001
 
-  # weight_decay:
-  #   max: 0.1e-1
-  #   min: 0.1e-5
+  weight_decay:
+    max: 0.1e-1
+    min: 0.1e-5
   optimizer:
     value: sgd
   criterion:

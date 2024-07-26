@@ -37,7 +37,6 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     USE_CHECKPOINT = settings["use_checkpoint"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
-    PROJECT_NAME = settings["project_name"]
     SWEEP_ID = settings["sweep_id"]
 
     # training hyperparams
@@ -100,15 +99,17 @@ def main():
         # initialize wandb agent
         #wandb.agent(SWEEP_ID)
         # define checkpoint path and monitor
+        configs = run.config.as_dict()
+
         checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}({CNN_BLOCKS}_blocks)", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
         # load data module
-        data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=2)
+        data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= configs["batch_size"], num_workers=2 )
 
         if USE_CHECKPOINT:
-            model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR,  learning_rate_patience=10, checkpoint_path=CHECKPOINT_PATH)
+            model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"],  learning_rate_patience=10, checkpoint_path=CHECKPOINT_PATH)
 
         else:
-            model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR, learning_rate_patience=10)
+            model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"], learning_rate_patience=10)
 
         # train the model
         trainer = Trainer(
