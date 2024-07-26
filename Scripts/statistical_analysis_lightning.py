@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import cv2
 import scipy
 import math
-import json
+import json, yaml
 
 from tqdm import tqdm
 
@@ -26,9 +26,9 @@ else:
     device = "cuda"
 
 ### Variables ###
-# reads setting`s json
-with open(os.path.join(".", "settings.json"), "r") as file:
-    settings = json.load(file)
+# reads setting`s yaml
+with open(os.path.join(".", "settings.yaml"), "r") as file:
+    settings = yaml.load(file, Loader=yaml.FullLoader)
 
     # global variables
     ANALYTE = settings["analyte"]
