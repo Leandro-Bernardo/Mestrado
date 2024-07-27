@@ -39,7 +39,7 @@ feature_extraction:
 
 
 models:
-  max_epochs: 5000
+  max_epochs: 2000
   learning_rate: 0.001
   gradient_clipping: 0.5
   loss_function: mean_squared_error
