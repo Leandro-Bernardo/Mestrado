@@ -1,6 +1,7 @@
 import torch
 
 import torch.nn as nn
+from typing import Optional, Dict
 
 class Model_1(torch.nn.Module):
     def __init__(self, in_channels: int = 1472, device: str = "cuda"):
@@ -100,13 +101,13 @@ class Model_2(torch.nn.Module):
 
 
 class Model_3(torch.nn.Module):
-    def __init__(self, in_channels: int = 1856, device: str = "cuda"):
+    def __init__(self, in_channels: int = 1856, device: str = "cuda", sweep_config: Optional[Dict] = None):
         super().__init__()
 
-        self.dropoutL1 = nn.Dropout(p=0.5)
-        self.dropoutL2 = nn.Dropout(p=0.4)
-        self.dropoutL3 = nn.Dropout(p=0.3)
-        self.dropoutL4 = nn.Dropout(p=0.2)
+        self.dropoutL1 = nn.Dropout(p = sweep_config["dropout_upper_layers"])  if sweep_config is not None else nn.Dropout(p=0.5)
+        self.dropoutL2 = nn.Dropout(p = sweep_config["dropout_middle_layers"]) if sweep_config is not None else nn.Dropout(p=0.4)
+        self.dropoutL3 = nn.Dropout(p = sweep_config["dropout_middle_layers"]) if sweep_config is not None else nn.Dropout(p=0.3)
+        self.dropoutL4 = nn.Dropout(p = sweep_config["dropout_lower_layers"])  if sweep_config is not None else nn.Dropout(p=0.2)
 
         device: str = "cuda"
         self.in_layer = nn.Sequential(

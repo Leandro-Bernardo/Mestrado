@@ -123,7 +123,7 @@ def main():
                                                 mode="min",
                                                 patience=10
                                             ),],
-                        gradient_clip_val= GRADIENT_CLIPPING,
+                        gradient_clip_val= configs["gradient_clip"],
                         gradient_clip_algorithm="value",  # https://lightning.ai/docs/pytorch/stable/advanced/training_tricks.html#gradient-clipping
                         log_every_n_steps=1,
                         num_sanity_val_steps=0,
