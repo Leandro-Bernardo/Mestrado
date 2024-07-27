@@ -115,3 +115,5 @@ Scripts/wandb/run-20240725_073351-lvqcp0av/logs/
 *.wandb
 
 *.log
+
+Scripts/wandb/run-20240725_125027-e2menxnx/files/Scripts/logs

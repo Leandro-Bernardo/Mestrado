@@ -119,9 +119,9 @@ def main():
                         callbacks= [checkpoint_callback,
                                     LearningRateMonitor(logging_interval='epoch'),
                                     EarlyStopping(
-                                                monitor="Loss/Train",
+                                                monitor="Loss/Val",
                                                 mode="min",
-                                                patience=20
+                                                patience=10
                                             ),],
                         gradient_clip_val= GRADIENT_CLIPPING,
                         gradient_clip_algorithm="value",  # https://lightning.ai/docs/pytorch/stable/advanced/training_tricks.html#gradient-clipping
@@ -133,7 +133,7 @@ def main():
         trainer.fit(model=model, datamodule=data_module)#, train_dataloaders=dataset
         trainer.test(model, datamodule=data_module, ckpt_path=None) #ckpt_path=None takes the best model saved
 
-        wandb.save(os.path.join(CHECKPOINT_PATH, MODEL_VERSION, "({CNN_BLOCKS}_blocks)"))#
+        wandb.save(os.path.join(CHECKPOINT_ROOT, f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"))
 
 if __name__ == "__main__":
     if USE_CHECKPOINT:
