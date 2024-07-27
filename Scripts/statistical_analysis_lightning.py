@@ -271,7 +271,7 @@ def main(dataset_for_inference):
         model.load_state_dict(checkpoint['state_dict'], strict=True)  # NOTE: Some checkpoints state dicts might not have the expected keys, as seen in  https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
     except:
         load_state_dict(model, checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_states'][0])
+    #optimizer.load_state_dict(checkpoint['optimizer_states'][0])
 
     ### Training time ###
     # print("Training time")
