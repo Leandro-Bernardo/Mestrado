@@ -42,6 +42,8 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     # training hyperparams
     MAX_EPOCHS = settings["models"]["max_epochs"]
     LR = settings["models"]["learning_rate"]
+    LR_PATIENCE = settings["models"]["learning_rate_patience"]
+    EARLY_STOP_PATIENCE = 2*LR_PATIENCE + 1
     LOSS_FUNCTION = settings["models"]["loss_function"]
     GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
     BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]**2   # uses all the descriptors from an single image as a batch
@@ -86,6 +88,11 @@ if USE_CHECKPOINT:
 
 else:
     os.makedirs(os.path.join(CHECKPOINT_ROOT), exist_ok =True)
+    # deletes last checkpoint for new ones to be created
+    # if os.path.isfile(os.path.join(CHECKPOINT_ROOT, f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt")):
+    #     os.remove(os.path.join(CHECKPOINT_ROOT, f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"))
+    #     os.remove(os.path.join(CHECKPOINT_ROOT, "last.ckpt"))
+
 
 ### Main ###
 def main():
@@ -106,10 +113,10 @@ def main():
         data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= configs["batch_size"], num_workers=2 )
 
         if USE_CHECKPOINT:
-            model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"],  learning_rate_patience=10, checkpoint_path=CHECKPOINT_PATH)
+            model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"],  learning_rate_patience=LR_PATIENCE, checkpoint_path=CHECKPOINT_PATH)
 
         else:
-            model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"], learning_rate_patience=10)
+            model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"], learning_rate_patience=LR_PATIENCE)
 
         # train the model
         trainer = Trainer(
@@ -121,7 +128,7 @@ def main():
                                     EarlyStopping(
                                                 monitor="Loss/Val",
                                                 mode="min",
-                                                patience=10
+                                                patience= EARLY_STOP_PATIENCE
                                             ),],
                         gradient_clip_val= configs["gradient_clip"],
                         gradient_clip_algorithm="value",  # https://lightning.ai/docs/pytorch/stable/advanced/training_tricks.html#gradient-clipping
@@ -131,7 +138,7 @@ def main():
                         )
 
         trainer.fit(model=model, datamodule=data_module)#, train_dataloaders=dataset
-        trainer.test(model, datamodule=data_module, ckpt_path=None) #ckpt_path=None takes the best model saved
+        #trainer.test(model, datamodule=data_module, ckpt_path=None) #ckpt_path=None takes the best model saved
 
         wandb.save(os.path.join(CHECKPOINT_ROOT, f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"))
 
