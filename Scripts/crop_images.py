@@ -26,24 +26,32 @@ SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "val_samples", 
 SAMPLES_TEST_PATH = os.path.join(os.path.dirname(__file__), "..",  "test_samples", f"{ANALYTE}")
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
-if SKIP_BLANK == True and PROCESS_BLANK_FILES_SEPARATEDLY == True:  #dont use blanks nor separated blanks
+if SKIP_BLANK == True and  PROCESS_BLANK_FILES_SEPARATEDLY == False:  # dont use blanks
     SAVE_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", "train")
     SAVE_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", "val")
     SAVE_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", "test")
 
-elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == False: # use blanks and process it together
+elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == False:  # use blanks and process it together
     SAVE_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", "train")
     SAVE_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", "val")
     SAVE_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", "test")
 
-elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == True: # process blanks separatedly
+elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == True:  # process blanks separatedly
     SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", "blank_files", f"{ANALYTE}")
     SAVE_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank", "train")
     SAVE_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank", "val")
     SAVE_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank", "test")
 
-else:
-    raise("Missmatch combinations \n SKIP_BLANK must be False for use separated blanks")
+elif SKIP_BLANK == True and PROCESS_BLANK_FILES_SEPARATEDLY == True:  # missmatch combination
+    raise Exception('''
+    Missmatch combinations
+        Case: SKIP_BLANK == True and PROCESS_BLANK_FILES_SEPARATEDLY == True)
+
+    OPTIONS:
+        SKIP_BLANK must be  True   and  PROCESS_BLANK_FILES_SEPARATEDLY  False  for not to process blanks, or
+        SKIP_BLANK must be  False  and  PROCESS_BLANK_FILES_SEPARATEDLY  False  for use blanks and process it together, or
+        SKIP_BLANK must be  False  and  PROCESS_BLANK_FILES_SEPARATEDLY  True   for process blanks separatedly
+        ''')
 
 #makes path dir
 os.makedirs(SAVE_TRAIN_PATH, exist_ok = True)
