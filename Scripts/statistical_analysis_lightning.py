@@ -10,15 +10,16 @@ import json, yaml
 from tqdm import tqdm
 
 from models import alkalinity, chloride
-from models.lightning import DataModule, BaseModel
+#from models.lightning import DataModule, BaseModel
 
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import  TensorDataset
 from torch import FloatTensor, UntypedStorage
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint
+#from pytorch_lightning import Trainer
+#from pytorch_lightning.callbacks import ModelCheckpoint
 
-from typing import Tuple, List, Dict
+from typing import Tuple, Dict
+
 if not torch.cuda.is_available():
     assert("cuda isnt available")
 
@@ -66,18 +67,25 @@ LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
 
 
 if SKIP_BLANK:
-    SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank"))
+    # model path
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
-    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors","no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    # data paths
+    SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank"))
+    IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    # results path
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors","no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 else:
+    # model path
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    # data paths
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank"))
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank")
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
-    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    # results path
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 
 CHECKPOINT_FILENAME = f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)
@@ -236,30 +244,12 @@ def write_pdf_statistics():
     pass
 
 def main(dataset_for_inference):
-    #TODO alterar isso para abrir a parti do json de metadados
-    train_samples_len = (int(len(os.listdir(os.path.join(SAMPLES_PATH, "train")))/3))
-    test_samples_len = (int(len(os.listdir(os.path.join(SAMPLES_PATH, "test")))/3))
-
-    if dataset_for_inference == "train":
-        len_mode = train_samples_len
-        dataset = load_dataset("train")
-
-        save_histogram_path = os.path.join(EVALUATION_ROOT, "train", "histogram", MODEL_VERSION)
-        save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, "train", "error_from_image", "from_cnn1_output", MODEL_VERSION)
-        save_error_from_image_path = os.path.join(EVALUATION_ROOT, "train", "error_from_image","from_original_image", MODEL_VERSION)
-        original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT)
-
-    elif dataset_for_inference == "test":
-         len_mode = test_samples_len
-         dataset = load_dataset("test")
-
-         save_histogram_path = os.path.join(EVALUATION_ROOT, "test", "histogram", MODEL_VERSION, )
-         save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_cnn1_output", MODEL_VERSION)
-         save_error_from_image_path = os.path.join(EVALUATION_ROOT,  "test", "error_from_image", "from_original_image", MODEL_VERSION)
-         original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT)
-
-    else:
-        NotImplementedError
+    dataset = load_dataset(dataset_for_inference)
+    len_mode = int(len(os.listdir(os.path.join(SAMPLES_PATH, dataset_for_inference)))/3) #TODO alterar isso para abrir a partir do json de metadados
+    save_histogram_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "histogram", MODEL_VERSION)
+    save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "error_from_image", "from_cnn1_output", MODEL_VERSION)
+    save_error_from_image_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "error_from_image","from_original_image", MODEL_VERSION)
+    original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT, dataset_for_inference)
 
     ### Loads model ###
     model = MODEL_NETWORK#.to('cuda')
@@ -287,6 +277,7 @@ def main(dataset_for_inference):
     print("Evaluation time")
     partial_loss, predicted_value, expected_value = evaluate(model=model, eval_loader=dataset)
 
+    #saves predicted values for analysis
     #transforms data before saving
     values_ziped = zip(predicted_value, expected_value)  #zips predicted and expected values
     column_array_values = np.array(list(values_ziped))  # converts to numpy
