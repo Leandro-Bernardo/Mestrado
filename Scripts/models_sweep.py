@@ -64,13 +64,13 @@ LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
 
 # defines path dir
 if SKIP_BLANK:
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", "wandb")
     SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank",  "train" )
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 
 else:
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", "wandb")
     SAMPLES_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank",  "train")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     LEARNING_VALUES_ROOT = os.path.join(os.path.dirname(__file__), "learning_values", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
@@ -108,7 +108,7 @@ def main():
         # define checkpoint path and monitor
         configs = run.config.as_dict()
 
-        checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}({CNN_BLOCKS}_blocks)", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
+        checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename= f"{run.name}.ckpt", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=False, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
         # load data module
         data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= configs["batch_size"], num_workers=2 )
 
@@ -140,7 +140,7 @@ def main():
         trainer.fit(model=model, datamodule=data_module)#, train_dataloaders=dataset
         #trainer.test(model, datamodule=data_module, ckpt_path=None) #ckpt_path=None takes the best model saved
 
-        wandb.save(os.path.join(CHECKPOINT_ROOT, f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"))
+        wandb.save(os.path.join(CHECKPOINT_ROOT, f"{run.name}.ckpt"))#f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"))
 
 if __name__ == "__main__":
     if USE_CHECKPOINT:
