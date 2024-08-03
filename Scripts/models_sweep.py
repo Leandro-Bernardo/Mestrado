@@ -56,7 +56,8 @@ networks_choices = {"Alkalinity": {"model_1": alkalinity.Model_1,
                                    "model_2": alkalinity.Model_2},
                       "Chloride": {"model_1": chloride.Model_1,
                                    "model_2": chloride.Model_2,
-                                   "model_3": chloride.Model_3}}
+                                   "model_3": chloride.Model_3,
+                                   "model_4": chloride.Model_4}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION]
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
