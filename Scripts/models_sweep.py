@@ -109,7 +109,7 @@ def main():
         # define checkpoint path and monitor
         configs = run.config.as_dict()
 
-        checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename= f"{run.name}.ckpt", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=False, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
+        checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename= run.name, save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=False, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
         # load data module
         data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= configs["batch_size"], num_workers=2 )
 

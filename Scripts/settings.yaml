@@ -2,8 +2,8 @@ analyte: Chloride
 skip_blank: false
 process_blank_files_separatedly: false
 feature_extractor: resnet50
-cnn_blocks: 4
-network_model: model_3
+cnn_blocks: 3
+network_model: model_4
 use_checkpoint: false
 sweep_id: false
 
@@ -11,13 +11,13 @@ feature_extraction:
   vgg11:
     Alkalinity:
       feature_list:
-        [features.2 features.5 features.10]
+        [features.2, features.5, features.10]
       receptive_field_dim: 15
       descriptor_depth   : 448
       image_shape        : 98
     Chloride  :
       feature_list:
-        [features.2 features.5 features.10 features.15 features.20]
+        [features.2, features.5, features.10, features.15, features.20]
       receptive_field_dim: 27
       descriptor_depth   : 1472
       image_shape        : 86
@@ -30,9 +30,9 @@ feature_extraction:
       image_shape        : null
     Chloride  :
       feature_list:
-        [relu layer1.2.relu_2 layer2.3.relu_2 layer3.5.relu_2]
+        [relu, layer1.2.relu_2, layer2.3.relu_2] #layer3.5.relu_2]
       receptive_field_dim: 0
-      descriptor_depth   : 1856
+      descriptor_depth   : 832 #1856
       image_shape        : 112
 
 
