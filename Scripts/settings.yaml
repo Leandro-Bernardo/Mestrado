@@ -2,8 +2,8 @@ analyte: Chloride
 skip_blank: false
 process_blank_files_separatedly: false
 feature_extractor: resnet50
-cnn_blocks: 3
-network_model: model_4
+cnn_blocks: 4
+network_model: model_5
 use_checkpoint: false
 sweep_id: false
 
@@ -30,9 +30,9 @@ feature_extraction:
       image_shape        : null
     Chloride  :
       feature_list:
-        [relu, layer1.2.relu_2, layer2.3.relu_2] #layer3.5.relu_2]
+        [relu, layer1.2.relu_2, layer2.3.relu_2,layer3.5.relu_2]
       receptive_field_dim: 0
-      descriptor_depth   : 832 #1856
+      descriptor_depth   : 1856 #320 #832
       image_shape        : 112
 
 

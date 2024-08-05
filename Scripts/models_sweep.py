@@ -57,7 +57,8 @@ networks_choices = {"Alkalinity": {"model_1": alkalinity.Model_1,
                       "Chloride": {"model_1": chloride.Model_1,
                                    "model_2": chloride.Model_2,
                                    "model_3": chloride.Model_3,
-                                   "model_4": chloride.Model_4}}
+                                   "model_4": chloride.Model_4,
+                                   "model_5": chloride.Model_5}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION]
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -141,7 +142,10 @@ def main():
         trainer.fit(model=model, datamodule=data_module)#, train_dataloaders=dataset
         #trainer.test(model, datamodule=data_module, ckpt_path=None) #ckpt_path=None takes the best model saved
 
+        #saves model checkpoint
         wandb.save(os.path.join(CHECKPOINT_ROOT, f"{run.name}.ckpt"))#f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"))
+        #saves settings used for that model
+        wandb.save(os.path.join(".", "settings.yaml"))
 
 if __name__ == "__main__":
     if USE_CHECKPOINT:
