@@ -30,7 +30,7 @@ torch.set_float32_matmul_precision('high')
 # reads setting`s yaml
 with open(os.path.join(".", "settings.yaml"), "r") as file:
     settings = yaml.load(file, Loader=yaml.FullLoader)
-
+    # global variables
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]
     MODEL_VERSION = settings["network_model"]
@@ -38,7 +38,6 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
     SWEEP_ID = settings["sweep_id"]
-
     # training hyperparams
     MAX_EPOCHS = settings["models"]["max_epochs"]
     LR = settings["models"]["learning_rate"]
@@ -47,6 +46,8 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     LOSS_FUNCTION = settings["models"]["loss_function"]
     GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
     BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]**2   # uses all the descriptors from an single image as a batch
+    # data variables
+    DESCRIPTOR_DEPTH = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["descriptor_depth"]
 
 # reads sweep configs yaml
 with open('./sweep_config.yaml') as file:
@@ -54,11 +55,11 @@ with open('./sweep_config.yaml') as file:
 
 networks_choices = {"Alkalinity": {"model_1": alkalinity.Model_1,
                                    "model_2": alkalinity.Model_2},
-                      "Chloride": {"model_1": chloride.Model_1,
-                                   "model_2": chloride.Model_2,
-                                   "model_3": chloride.Model_3,
-                                   "model_4": chloride.Model_4,
-                                   "model_5": chloride.Model_5}}
+                      "Chloride": {"model_1"  : chloride.Model_1,
+                                   "model_2"  : chloride.Model_2,
+                                   "model_3"  : chloride.Model_3,
+                                   "model_4"  : chloride.Model_4,
+                                   "zero_dawn": chloride.Zero_Dawn}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION]
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -103,22 +104,20 @@ def main():
         assert isinstance(run, Run)
         # initialize logger
         logger = WandbLogger(project=ANALYTE, experiment=run)
-        # initialize sweep ID
-        #sweep_id = wandb.sweep(SWEEP_CONFIGS, project=PROJECT_NAME)
-        # initialize wandb agent
-        #wandb.agent(SWEEP_ID)
-        # define checkpoint path and monitor
+        # gets sweep configs
         configs = run.config.as_dict()
-
+        # parse neural network args
+        #model = MODEL_NETWORK(descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
+        # checkpoint callback setting
         checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename= run.name, save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=False, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
         # load data module
         data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= configs["batch_size"], num_workers=2 )
 
         if USE_CHECKPOINT:
-            model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"],  learning_rate_patience=LR_PATIENCE, checkpoint_path=CHECKPOINT_PATH)
+            model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"],  learning_rate_patience=LR_PATIENCE, checkpoint_path=CHECKPOINT_PATH, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
 
         else:
-            model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"], learning_rate_patience=LR_PATIENCE)
+            model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"], learning_rate_patience=LR_PATIENCE, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
 
         # train the model
         trainer = Trainer(
@@ -138,12 +137,22 @@ def main():
                         num_sanity_val_steps=0,
                         enable_progress_bar=True
                         )
-
+        #trains the model
         trainer.fit(model=model, datamodule=data_module)#, train_dataloaders=dataset
+        #test the model
         #trainer.test(model, datamodule=data_module, ckpt_path=None) #ckpt_path=None takes the best model saved
 
-        #saves model checkpoint
-        wandb.save(os.path.join(CHECKPOINT_ROOT, f"{run.name}.ckpt"))#f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"))
+        #saves model`s archtecture locally (txt file)
+        with os.path.join(CHECKPOINT_ROOT, f"{run.name}_archtecture.txt") as file:
+            file.write(str(model.sequential_layers))
+        #saves model`s archtecture locally (bin file)
+        torch.save(model.sequential_layers, os.path.join(CHECKPOINT_ROOT, f"{run.name}_archtecture"))
+        #saves model`s archtecture on wandb
+        wandb.save(os.path.join(CHECKPOINT_ROOT, f"{run.name}_archtecture"))
+        #saves model`s archtecture on wandb (txt file)
+        wandb.save(os.path.join(CHECKPOINT_ROOT, f"{run.name}_archtecture.txt"))
+        #saves model`s checkpoint on wandb
+        wandb.save(os.path.join(CHECKPOINT_ROOT, f"{run.name}.ckpt"))
         #saves settings used for that model
         wandb.save(os.path.join(".", "settings.yaml"))
 

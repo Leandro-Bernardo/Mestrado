@@ -12,7 +12,7 @@ from torch.utils.data import Dataset, DataLoader, random_split, TensorDataset
 from torch.optim import SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import Accuracy, F1Score, JaccardIndex, MeanAbsoluteError, MeanAbsolutePercentageError, MeanSquaredError, MetricCollection, Precision, Recall, SymmetricMeanAbsolutePercentageError, WeightedMeanAbsolutePercentageError
-from typing import Any, List, Tuple, TypeVar, Optional
+from typing import Any, List, Tuple, TypeVar, Optional, Dict
 
 
 
@@ -59,10 +59,10 @@ class DataModule(LightningDataModule):
         return DataLoader(self.test_subset,  batch_size=1, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
 
 class BaseModel(LightningModule):
-    def __init__(self, *, dataset: DataLoader, model: torch.nn.Module, batch_size: int, loss_function: torch.nn.Module, learning_rate: float, learning_rate_patience: int = None , **kwargs: Any):
-        super().__init__()
+    def __init__(self, *, dataset: DataLoader, model: torch.nn.Module, batch_size: int, loss_function: torch.nn.Module, learning_rate: float, learning_rate_patience: int = None, descriptor_depth: int, sweep_config: Dict, **kwargs: Any):
+        super().__init__(**kwargs)
         self.dataset = dataset
-        self.model = model(**kwargs)
+        self.model = model(descriptor_depth, sweep_config, **kwargs)
         self.criterion = loss_function
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -88,8 +88,8 @@ class BaseModel(LightningModule):
     # # Apply early stopping.
     #  return [EarlyStopping(monitor="Loss/Val", mode="min", patience=self.early_stopping_patience)]
 
-    def forward(self, input: Any):
-     return self.model(input)
+    def forward(self, x: Any):
+     return self.model(x)
 
 
     #defines basics operations for train, validadion and test
