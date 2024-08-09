@@ -106,8 +106,7 @@ def main():
         logger = WandbLogger(project=ANALYTE, experiment=run)
         # gets sweep configs
         configs = run.config.as_dict()
-        # parse neural network args
-        #model = MODEL_NETWORK(descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
+
         # checkpoint callback setting
         checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename= run.name, save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=False, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
         # load data module
@@ -142,11 +141,13 @@ def main():
         #test the model
         #trainer.test(model, datamodule=data_module, ckpt_path=None) #ckpt_path=None takes the best model saved
 
+        # parse neural network args for save architecture and checkpoints on wandb
+        run_model = MODEL_NETWORK(descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
         #saves model`s archtecture locally (txt file)
-        with os.path.join(CHECKPOINT_ROOT, f"{run.name}_archtecture.txt") as file:
-            file.write(str(model.sequential_layers))
+        with open(os.path.join(CHECKPOINT_ROOT, f"{run.name}_archtecture.txt"), "w") as file:
+            file.write(str(run_model.sequential_layers))
         #saves model`s archtecture locally (bin file)
-        torch.save(model.sequential_layers, os.path.join(CHECKPOINT_ROOT, f"{run.name}_archtecture"))
+        torch.save(run_model.sequential_layers, os.path.join(CHECKPOINT_ROOT, f"{run.name}_archtecture"))
         #saves model`s archtecture on wandb
         wandb.save(os.path.join(CHECKPOINT_ROOT, f"{run.name}_archtecture"))
         #saves model`s archtecture on wandb (txt file)
