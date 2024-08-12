@@ -116,3 +116,4 @@ Scripts/.tmp.drivedownload/
 *.log
 
 Scripts/wandb
+*.xlsx

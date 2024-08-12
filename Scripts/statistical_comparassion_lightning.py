@@ -285,13 +285,14 @@ def main(dataset_for_inference: str):
             lab_mean= pca_stats[f"{ANALYTE}"]['lab_mean'],
             lab_sorted_eigenvectors = pca_stats[f"{ANALYTE}"]['lab_sorted_eigenvectors'])
 
-    print("Descriptor based model. Evaluation time")
-    partial_loss, predicted_value, expected_value = evaluate(model=model, eval_loader=dataset)
-    predicted_value, expected_value = np.array(predicted_value), np.array(expected_value)
+    # print("Descriptor based model. Evaluation time")
+    # partial_loss, predicted_value, expected_value = evaluate(model=model, eval_loader=dataset)
+    # predicted_value, expected_value = np.array(predicted_value), np.array(expected_value)
 
-    sample_predicted_value = np.reshape(predicted_value, (len_total_samples, -1))
-    sample_expected_value = np.reshape(expected_value, (len_total_samples, -1))
+    # sample_predicted_value = np.reshape(predicted_value, (len_total_samples, -1))
+    # sample_expected_value = np.reshape(expected_value, (len_total_samples, -1))
 
+    # TODO fix this
     ## evaluates blank samples if they were separated from training samples (if not, does nothing)
     # if PROCESS_BLANK_FILES_SEPARATEDLY == True:
     #     print("Evaluating blank files")
@@ -317,60 +318,61 @@ def main(dataset_for_inference: str):
     #                                            "max": stats.max_value,
     #                                           }
 
-    sample_stats_dict = {}
-    for i in range(0, sample_predicted_value.shape[0] - 1):
-        stats = Statistics(sample_predicted_value[i], sample_expected_value[i])
-        datetime, analyst_name, sample_prefix, blank_filename = get_sample_identity(f"sample_{i}", IDENTITY_PATH)
-        sample_stats_dict[sample_prefix] = {
-                                            "analyst_name": analyst_name,
-                                            "datetime": datetime,
-                                            "blank_id": blank_filename,
-                                            "expected value": np.unique(sample_expected_value[i])[0],
-                                            "estimated": 0,  #estimation from pmf based model
-                                            "mean": stats.mean,
-                                            "median": stats.median,
-                                            "mode": stats.mode,
-                                            "variance": stats.variance,
-                                            "std": stats.std,
-                                            "mad": stats.mad,
-                                            "min": stats.min_value,
-                                            "max": stats.max_value,
-                                            #"mean absolute error": stats.mae,
-                                            #"mean relative error": stats.mpe,
-                                            #"std mean absolute error": stats.std_mae,
-                                            #"std mean relative error": stats.std_mpe,
-                                           }
+    # sample_stats_dict = {}
+    # for i in range(0, sample_predicted_value.shape[0] - 1):
+    #     stats = Statistics(sample_predicted_value[i], sample_expected_value[i])
+    #     datetime, analyst_name, sample_prefix, blank_filename = get_sample_identity(f"sample_{i}", IDENTITY_PATH)
+    #     sample_stats_dict[sample_prefix] = {
+    #                                         "analyst_name": analyst_name,
+    #                                         "datetime": datetime,
+    #                                         "blank_id": blank_filename,
+    #                                         "expected value": np.unique(sample_expected_value[i])[0],
+    #                                         "estimated": 0,  #estimation from pmf based model
+    #                                         "mean": stats.mean,
+    #                                         "median": stats.median,
+    #                                         "mode": stats.mode,
+    #                                         "variance": stats.variance,
+    #                                         "std": stats.std,
+    #                                         "mad": stats.mad,
+    #                                         "min": stats.min_value,
+    #                                         "max": stats.max_value,
+    #                                         #"mean absolute error": stats.mae,
+    #                                         #"mean relative error": stats.mpe,
+    #                                         #"std mean absolute error": stats.std_mae,
+    #                                         #"std mean relative error": stats.std_mpe,
+    #                                        }
 
 
 
     #creates a dataframe and then saves the xmls file
-    df_stats = pd.DataFrame(sample_stats_dict).transpose()
+    # df_stats = pd.DataFrame(sample_stats_dict).transpose()
 
-    # # fixes the predicted values if blank samples were separated from training samples (if not, does nothing)
-    # if PROCESS_BLANK_FILES_SEPARATEDLY == True:
-    #     blank_df = pd.DataFrame(blank_stats_dict).transpose()
-    #     for id in df_stats.index:
-    #         blank_file_name = df_stats.loc[id, 'blank_id']
-    #         df_stats.loc[id, "mean"] = df_stats.loc[id, "mean"] - blank_df.loc[blank_file_name, "mean"]
-    #         df_stats.loc[id, "median"] = df_stats.loc[id, "median"] - blank_df.loc[blank_file_name, "median"]
-    #         df_stats.loc[id, "variance"] = df_stats.loc[id, "variance"] + blank_df.loc[blank_file_name, "variance"]  #Var(X-Y) = Var(X) + Var(Y) - 2Cov(X,Y) ;  Var(X+Y) = Var(X) + Var(Y) + 2Cov(X,Y)
-    #         df_stats.loc[id, "std"] = math.sqrt(df_stats.loc[id, "variance"])
-    #     blank_df.to_excel(os.path.join(f"{SAVE_EXCEL_PATH}", "blank_statistics.xlsx"))
+    # # TODO fix this
+    # # # fixes the predicted values if blank samples were separated from training samples (if not, does nothing)
+    # # if PROCESS_BLANK_FILES_SEPARATEDLY == True:
+    # #     blank_df = pd.DataFrame(blank_stats_dict).transpose()
+    # #     for id in df_stats.index:
+    # #         blank_file_name = df_stats.loc[id, 'blank_id']
+    # #         df_stats.loc[id, "mean"] = df_stats.loc[id, "mean"] - blank_df.loc[blank_file_name, "mean"]
+    # #         df_stats.loc[id, "median"] = df_stats.loc[id, "median"] - blank_df.loc[blank_file_name, "median"]
+    # #         df_stats.loc[id, "variance"] = df_stats.loc[id, "variance"] + blank_df.loc[blank_file_name, "variance"]  #Var(X-Y) = Var(X) + Var(Y) - 2Cov(X,Y) ;  Var(X+Y) = Var(X) + Var(Y) + 2Cov(X,Y)
+    # #         df_stats.loc[id, "std"] = math.sqrt(df_stats.loc[id, "variance"])
+    # #     blank_df.to_excel(os.path.join(f"{SAVE_EXCEL_PATH}", "blank_statistics.xlsx"))
 
-    excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks).xlsx")
-    df_stats.to_excel(excel_filename)
+    # excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks).xlsx")
+    # df_stats.to_excel(excel_filename)
 
-    #PMF BASED MODEL
-    #evaluation of the pmf based model
-    # estimation_func = AlkalinityEstimationFunction(checkpoint=os.path.join(os.path.dirname(__file__), "checkpoints", "AlkalinityNetwork.ckpt")).to("cuda")
-    # estimation_func.eval()
+    # #PMF BASED MODEL
+    # #evaluation of the pmf based model
+    # # estimation_func = AlkalinityEstimationFunction(checkpoint=os.path.join(os.path.dirname(__file__), "checkpoints", "AlkalinityNetwork.ckpt")).to("cuda")
+    # # estimation_func.eval()
 
-    # pmf_model_prediction = {}
-    # for i in range(train_split_size, train_split_size + test_split_size):  #takes only the test samples
-    #     prediction = estimation_func(calibrated_pmf = torch.as_tensor(Y_test_pmf_model[i].calibrated_pmf, dtype = torch.float32, device = "cuda"))
-    #     pmf_model_prediction[f"sample_{i}"] =  prediction
+    # # pmf_model_prediction = {}
+    # # for i in range(train_split_size, train_split_size + test_split_size):  #takes only the test samples
+    # #     prediction = estimation_func(calibrated_pmf = torch.as_tensor(Y_test_pmf_model[i].calibrated_pmf, dtype = torch.float32, device = "cuda"))
+    # #     pmf_model_prediction[f"sample_{i}"] =  prediction
 
-    print(" ")
+    # print(" ")
 
 
 
