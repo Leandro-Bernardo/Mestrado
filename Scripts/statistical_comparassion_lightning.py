@@ -73,7 +73,7 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                     "Chloride": {"model_1": chloride.Model_1(),
                                  "model_2": chloride.Model_2(),
                                  "model_3": chloride.Model_3(),
-                                 "best"   : chloride.Best_Model()}}
+                                 "best"   : chloride.Best_Model(DESCRIPTOR_DEPTH)}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -104,7 +104,7 @@ if SKIP_BLANK == True and  PROCESS_BLANK_FILES_SEPARATEDLY == False:  # dont use
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # save path
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "no_blank", "statistics")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", "Udescriptors", f"{ANALYTE}", "no_blank", "statistics")
 
 elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == False:  # use blanks and process it together
     # model paths
@@ -114,7 +114,7 @@ elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == False:  # use bl
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # save path
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank", "statistics")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", "Udescriptors", f"{ANALYTE}", "with_blank", "statistics")
 
 elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == True:  # process blanks separatedly
     # model path
@@ -128,7 +128,7 @@ elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == True:  # process
     BLANK_IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank", f"{IMAGES_TO_EVALUATE}")
     BLANK_DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "processed_blank", f"{IMAGES_TO_EVALUATE}")
     # save path
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "processed_blank")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", "Udescriptors", f"{ANALYTE}", "processed_blank")
 
 elif SKIP_BLANK == True and PROCESS_BLANK_FILES_SEPARATEDLY == True:  # missmatch combination
     raise Exception('''
@@ -173,7 +173,14 @@ def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_
 
 # fix the state dict keys and loads it
 def load_state_dict(model: torch.nn.Module, checkpoint_state_dict: Dict ):
-    new_state_dict = {key.replace('model.', '') : value for key, value in checkpoint_state_dict.items()}
+    checkpoint_state_dict = dict(checkpoint_state_dict.items())
+    if "model.in_layer" in checkpoint_state_dict.keys():
+        new_state_dict = {key.replace('model.', '') : value for key, value in checkpoint_state_dict.items()}
+    elif "model.sequential_layers.input_layer.0.weight" in  checkpoint_state_dict.keys():
+        new_state_dict = {key.replace('model.sequential_layers.', '') : value for key, value in checkpoint_state_dict.items()}
+        #new_state_dict = {key.replace('.0.', '.') : value for key, value in new_state_dict.items()}
+        new_state_dict = {key.replace('layer_', 'l') : value for key, value in new_state_dict.items()}
+
 
     return model.load_state_dict(new_state_dict, strict=True)
 
@@ -286,12 +293,12 @@ def main(dataset_for_inference: str):
             lab_mean= pca_stats[f"{ANALYTE}"]['lab_mean'],
             lab_sorted_eigenvectors = pca_stats[f"{ANALYTE}"]['lab_sorted_eigenvectors'])
 
-    # print("Descriptor based model. Evaluation time")
-    # partial_loss, predicted_value, expected_value = evaluate(model=model, eval_loader=dataset)
-    # predicted_value, expected_value = np.array(predicted_value), np.array(expected_value)
+    print("Descriptor based model. Evaluation time")
+    partial_loss, predicted_value, expected_value = evaluate(model=model, eval_loader=dataset)
+    predicted_value, expected_value = np.array(predicted_value), np.array(expected_value)
 
-    # sample_predicted_value = np.reshape(predicted_value, (len_total_samples, -1))
-    # sample_expected_value = np.reshape(expected_value, (len_total_samples, -1))
+    sample_predicted_value = np.reshape(predicted_value, (len_total_samples, -1))
+    sample_expected_value = np.reshape(expected_value, (len_total_samples, -1))
 
     # TODO fix this
     ## evaluates blank samples if they were separated from training samples (if not, does nothing)
@@ -319,49 +326,49 @@ def main(dataset_for_inference: str):
     #                                            "max": stats.max_value,
     #                                           }
 
-    # sample_stats_dict = {}
-    # for i in range(0, sample_predicted_value.shape[0] - 1):
-    #     stats = Statistics(sample_predicted_value[i], sample_expected_value[i])
-    #     datetime, analyst_name, sample_prefix, blank_filename = get_sample_identity(f"sample_{i}", IDENTITY_PATH)
-    #     sample_stats_dict[sample_prefix] = {
-    #                                         "analyst_name": analyst_name,
-    #                                         "datetime": datetime,
-    #                                         "blank_id": blank_filename,
-    #                                         "expected value": np.unique(sample_expected_value[i])[0],
-    #                                         "estimated": 0,  #estimation from pmf based model
-    #                                         "mean": stats.mean,
-    #                                         "median": stats.median,
-    #                                         "mode": stats.mode,
-    #                                         "variance": stats.variance,
-    #                                         "std": stats.std,
-    #                                         "mad": stats.mad,
-    #                                         "min": stats.min_value,
-    #                                         "max": stats.max_value,
-    #                                         #"mean absolute error": stats.mae,
-    #                                         #"mean relative error": stats.mpe,
-    #                                         #"std mean absolute error": stats.std_mae,
-    #                                         #"std mean relative error": stats.std_mpe,
-    #                                        }
+    sample_stats_dict = {}
+    for i in range(0, sample_predicted_value.shape[0] - 1):
+        stats = Statistics(sample_predicted_value[i], sample_expected_value[i])
+        datetime, analyst_name, sample_prefix, blank_filename = get_sample_identity(f"sample_{i}", IDENTITY_PATH)
+        sample_stats_dict[sample_prefix] = {
+                                            "analyst_name": analyst_name,
+                                            "datetime": datetime,
+                                            "blank_id": blank_filename,
+                                            "expected value": np.unique(sample_expected_value[i])[0],
+                                            "estimated": 0,  #estimation from pmf based model
+                                            "mean": stats.mean,
+                                            "median": stats.median,
+                                            "mode": stats.mode,
+                                            "variance": stats.variance,
+                                            "std": stats.std,
+                                            "mad": stats.mad,
+                                            "min": stats.min_value,
+                                            "max": stats.max_value,
+                                            #"mean absolute error": stats.mae,
+                                            #"mean relative error": stats.mpe,
+                                            #"std mean absolute error": stats.std_mae,
+                                            #"std mean relative error": stats.std_mpe,
+                                           }
 
 
 
     #creates a dataframe and then saves the xmls file
-    # df_stats = pd.DataFrame(sample_stats_dict).transpose()
+    df_stats = pd.DataFrame(sample_stats_dict).transpose()
 
-    # # TODO fix this
-    # # # fixes the predicted values if blank samples were separated from training samples (if not, does nothing)
-    # # if PROCESS_BLANK_FILES_SEPARATEDLY == True:
-    # #     blank_df = pd.DataFrame(blank_stats_dict).transpose()
-    # #     for id in df_stats.index:
-    # #         blank_file_name = df_stats.loc[id, 'blank_id']
-    # #         df_stats.loc[id, "mean"] = df_stats.loc[id, "mean"] - blank_df.loc[blank_file_name, "mean"]
-    # #         df_stats.loc[id, "median"] = df_stats.loc[id, "median"] - blank_df.loc[blank_file_name, "median"]
-    # #         df_stats.loc[id, "variance"] = df_stats.loc[id, "variance"] + blank_df.loc[blank_file_name, "variance"]  #Var(X-Y) = Var(X) + Var(Y) - 2Cov(X,Y) ;  Var(X+Y) = Var(X) + Var(Y) + 2Cov(X,Y)
-    # #         df_stats.loc[id, "std"] = math.sqrt(df_stats.loc[id, "variance"])
-    # #     blank_df.to_excel(os.path.join(f"{SAVE_EXCEL_PATH}", "blank_statistics.xlsx"))
+    # TODO fix this
+    # # fixes the predicted values if blank samples were separated from training samples (if not, does nothing)
+    # if PROCESS_BLANK_FILES_SEPARATEDLY == True:
+    #     blank_df = pd.DataFrame(blank_stats_dict).transpose()
+    #     for id in df_stats.index:
+    #         blank_file_name = df_stats.loc[id, 'blank_id']
+    #         df_stats.loc[id, "mean"] = df_stats.loc[id, "mean"] - blank_df.loc[blank_file_name, "mean"]
+    #         df_stats.loc[id, "median"] = df_stats.loc[id, "median"] - blank_df.loc[blank_file_name, "median"]
+    #         df_stats.loc[id, "variance"] = df_stats.loc[id, "variance"] + blank_df.loc[blank_file_name, "variance"]  #Var(X-Y) = Var(X) + Var(Y) - 2Cov(X,Y) ;  Var(X+Y) = Var(X) + Var(Y) + 2Cov(X,Y)
+    #         df_stats.loc[id, "std"] = math.sqrt(df_stats.loc[id, "variance"])
+    #     blank_df.to_excel(os.path.join(f"{SAVE_EXCEL_PATH}", "blank_statistics.xlsx"))
 
-    # excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks).xlsx")
-    # df_stats.to_excel(excel_filename)
+    excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks).xlsx")
+    df_stats.to_excel(excel_filename)
 
     # #PMF BASED MODEL
     # #evaluation of the pmf based model
