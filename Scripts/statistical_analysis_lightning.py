@@ -34,7 +34,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     # global variables
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]
-    MODEL_VERSION = settings["network_model"]
+    MODEL_VERSION = "best"#settings["network_model"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
 
@@ -60,7 +60,7 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                     "Chloride": {"model_1": chloride.Model_1(),
                                  "model_2": chloride.Model_2(),
                                  "model_3": chloride.Model_3(),
-                                 "best"   : chloride.Best_Model()}}
+                                 "best"   : chloride.Best_Model(DESCRIPTOR_DEPTH)}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -134,7 +134,14 @@ def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_
 
 # fix the state dict keys and loads it
 def load_state_dict(model: torch.nn.Module, checkpoint_state_dict: Dict ):
-    new_state_dict = {key.replace('model.', '') : value for key, value in checkpoint_state_dict.items()}
+    checkpoint_state_dict = dict(checkpoint_state_dict.items())
+    if "model.in_layer" in checkpoint_state_dict.keys():
+        new_state_dict = {key.replace('model.', '') : value for key, value in checkpoint_state_dict.items()}
+    elif "model.sequential_layers.input_layer.0.weight" in  checkpoint_state_dict.keys():
+        new_state_dict = {key.replace('model.sequential_layers.', '') : value for key, value in checkpoint_state_dict.items()}
+        #new_state_dict = {key.replace('.0.', '.') : value for key, value in new_state_dict.items()}
+        new_state_dict = {key.replace('layer_', 'l') : value for key, value in new_state_dict.items()}
+
 
     return model.load_state_dict(new_state_dict, strict=True)
 
@@ -250,7 +257,7 @@ def main(dataset_for_inference):
     save_histogram_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "histogram", MODEL_VERSION)
     save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "error_from_image", "from_cnn1_output", MODEL_VERSION)
     save_error_from_image_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "error_from_image","from_original_image", MODEL_VERSION)
-    original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT, dataset_for_inference)
+    original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT)
 
     ### Loads model ###
     model = MODEL_NETWORK#.to('cuda')
@@ -395,5 +402,4 @@ def main(dataset_for_inference):
 
 
 if __name__ == "__main__":
-    #main(dataset_for_inference="train")
-    main(dataset_for_inference="test")
+    main(dataset_for_inference=IMAGES_TO_EVALUATE)

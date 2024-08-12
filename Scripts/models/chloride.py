@@ -284,47 +284,47 @@ class Best_Model(torch.nn.Module):
     def __init__(self, descriptor_depth: int, sweep_config: Optional[Dict] = None, device: str = "cuda", **kwargs):
         super().__init__()
 
-        self.in_layer = torch.nn.Sequential(
+        self.input_layer = torch.nn.Sequential(
                                             torch.nn.Linear(in_features=1856, out_features=1024, bias=True),
                                             torch.nn.ReLU(),
                                             torch.nn.Dropout(p=0.36159908287354814, inplace=False))
-        self.l1 = torch.nn.Sequential(
+        self.l10 = torch.nn.Sequential(
                                       torch.nn.Linear(in_features=1024, out_features=1024, bias=True),
                                       torch.nn.ReLU(),
                                       torch.nn.Dropout(p=0.36159908287354814, inplace=False))
-        self.l2 = torch.nn.Sequential(
+        self.l9 = torch.nn.Sequential(
                                       torch.nn.Linear(in_features=1024, out_features=512, bias=True),
                                       torch.nn.ReLU(),
                                       torch.nn.Dropout(p=0.36159908287354814, inplace=False))
-        self.l3 = torch.nn.Sequential(
+        self.l8 = torch.nn.Sequential(
                                       torch.nn.Linear(in_features=512, out_features=512, bias=True),
                                       torch.nn.ReLU(),
                                       torch.nn.Dropout(p=0.36159908287354814, inplace=False))
-        self.l4 = torch.nn.Sequential(
+        self.l7 = torch.nn.Sequential(
                                       torch.nn.Linear(in_features=512, out_features=512, bias=True),
-                                      torch.nn.ReLU(),
-                                      torch.nn.Dropout(p=0.36159908287354814, inplace=False))
-        self.l5 = torch.nn.Sequential(
-                                      torch.nn.Linear(in_features=512, out_features=256, bias=True),
                                       torch.nn.ReLU(),
                                       torch.nn.Dropout(p=0.36159908287354814, inplace=False))
         self.l6 = torch.nn.Sequential(
+                                      torch.nn.Linear(in_features=512, out_features=256, bias=True),
+                                      torch.nn.ReLU(),
+                                      torch.nn.Dropout(p=0.36159908287354814, inplace=False))
+        self.l5 = torch.nn.Sequential(
                                       torch.nn.Linear(in_features=256, out_features=256, bias=True),
                                       torch.nn.ReLU(),
                                       torch.nn.Dropout(p=0.2177579021351188, inplace=False))
-        self.l7 = torch.nn.Sequential(
+        self.l4 = torch.nn.Sequential(
                                       torch.nn.Linear(in_features=256, out_features=128, bias=True),
                                       torch.nn.ReLU(),
                                       torch.nn.Dropout(p=0.2177579021351188, inplace=False))
-        self.l8 = torch.nn.Sequential(
+        self.l3 = torch.nn.Sequential(
                                       torch.nn.Linear(in_features=128, out_features=128, bias=True),
                                       torch.nn.ReLU(),
                                       torch.nn.Dropout(p=0.14220723888179568, inplace=False))
-        self.l9 = torch.nn.Sequential(
+        self.l2 = torch.nn.Sequential(
                                       torch.nn.Linear(in_features=128, out_features=32, bias=True),
                                       torch.nn.ReLU(),
                                       torch.nn.Dropout(p=0.14220723888179568, inplace=False))
-        self.l10 = torch.nn.Sequential(
+        self.l1 = torch.nn.Sequential(
                                       torch.nn.Linear(in_features=32, out_features=8, bias=True),
                                       torch.nn.ReLU(),
                                       torch.nn.Dropout(p=0, inplace=False))
@@ -332,17 +332,17 @@ class Best_Model(torch.nn.Module):
                                       torch.nn.Linear(in_features=8, out_features=1, bias=True))
 
     def forward(self, x: torch.Tensor):
-        x = self.in_layer(x)
-        x = self.l1(x)
-        x = self.l2(x)
-        x = self.l3(x)
-        x = self.l4(x)
-        x = self.l5(x)
-        x = self.l6(x)
-        x = self.l7(x)
-        x = self.l8(x)
-        x = self.l9(x)
+        x = self.input_layer(x)
         x = self.l10(x)
+        x = self.l9(x)
+        x = self.l8(x)
+        x = self.l7(x)
+        x = self.l6(x)
+        x = self.l5(x)
+        x = self.l4(x)
+        x = self.l3(x)
+        x = self.l2(x)
+        x = self.l1(x)
         x = self.output_layer(x)
 
         return x

@@ -39,7 +39,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]
     PROCESS_BLANK_FILES_SEPARATEDLY = settings["process_blank_files_separatedly"]
-    MODEL_VERSION = settings["network_model"]
+    MODEL_VERSION = "best"#settings["network_model"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
 

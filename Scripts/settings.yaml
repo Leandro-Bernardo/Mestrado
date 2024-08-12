@@ -49,4 +49,4 @@ models:
   batch_normalization: true
 
 statistical_analysis:
-  images_to_evaluate: train
+  images_to_evaluate: test
