@@ -59,7 +59,8 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                   "model_2": alkalinity.Model_2()},
                     "Chloride": {"model_1": chloride.Model_1(),
                                  "model_2": chloride.Model_2(),
-                                 "model_3": chloride.Model_3()}}
+                                 "model_3": chloride.Model_3(),
+                                 "best"   : chloride.Best_Model()}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -87,7 +88,7 @@ else:
     # results path
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 
-CHECKPOINT_FILENAME = f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"
+CHECKPOINT_FILENAME = f"checkpoint.ckpt"
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)
 print('Using this checkpoint:', CHECKPOINT_PATH)
 
