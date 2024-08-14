@@ -3,7 +3,7 @@ import cv2
 import torch
 import torchvision
 import numpy as np
-import json
+import json, yaml
 
 
 from torch import FloatTensor, UntypedStorage
@@ -14,8 +14,8 @@ from torchvision.models.feature_extraction import create_feature_extractor
 
 ### Variables ###
 # reads setting`s json
-with open(os.path.join(".", "settings.json"), "r") as file:
-    settings = json.load(file)
+with open(os.path.join(".", "settings.yaml"), "r") as file:
+    settings = yaml.load(file, Loader=yaml.FullLoader)
 
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]

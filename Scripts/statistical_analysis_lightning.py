@@ -5,20 +5,21 @@ import matplotlib.pyplot as plt
 import cv2
 import scipy
 import math
-import json
+import json, yaml
 
 from tqdm import tqdm
 
 from models import alkalinity, chloride
-from models.lightning import DataModule, BaseModel
+#from models.lightning import DataModule, BaseModel
 
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import  TensorDataset
 from torch import FloatTensor, UntypedStorage
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint
+#from pytorch_lightning import Trainer
+#from pytorch_lightning.callbacks import ModelCheckpoint
 
-from typing import Tuple, List, Dict
+from typing import Tuple, Dict
+
 if not torch.cuda.is_available():
     assert("cuda isnt available")
 
@@ -26,14 +27,14 @@ else:
     device = "cuda"
 
 ### Variables ###
-# reads setting`s json
-with open(os.path.join(".", "settings.json"), "r") as file:
-    settings = json.load(file)
+# reads setting`s yaml
+with open(os.path.join(".", "settings.yaml"), "r") as file:
+    settings = yaml.load(file, Loader=yaml.FullLoader)
 
     # global variables
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]
-    MODEL_VERSION = settings["network_model"]
+    MODEL_VERSION = "best"#settings["network_model"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
 
@@ -58,7 +59,8 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                   "model_2": alkalinity.Model_2()},
                     "Chloride": {"model_1": chloride.Model_1(),
                                  "model_2": chloride.Model_2(),
-                                 "model_3": chloride.Model_3(),}}
+                                 "model_3": chloride.Model_3(),
+                                 "best"   : chloride.Best_Model(DESCRIPTOR_DEPTH)}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -66,20 +68,27 @@ LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
 
 
 if SKIP_BLANK:
-    SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank"))
+    # model path
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
-    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors","no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    # data paths
+    SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank"))
+    IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    # results path
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors","no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 else:
+    # model path
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    # data paths
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank"))
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank")
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
-    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
+    DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    # results path
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 
-CHECKPOINT_FILENAME = f"{MODEL_VERSION}({CNN_BLOCKS}_blocks).ckpt"
+CHECKPOINT_FILENAME = f"checkpoint.ckpt"
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)
 print('Using this checkpoint:', CHECKPOINT_PATH)
 
@@ -125,7 +134,14 @@ def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_
 
 # fix the state dict keys and loads it
 def load_state_dict(model: torch.nn.Module, checkpoint_state_dict: Dict ):
-    new_state_dict = {key.replace('model.', '') : value for key, value in checkpoint_state_dict.items()}
+    checkpoint_state_dict = dict(checkpoint_state_dict.items())
+    if "model.in_layer" in checkpoint_state_dict.keys():
+        new_state_dict = {key.replace('model.', '') : value for key, value in checkpoint_state_dict.items()}
+    elif "model.sequential_layers.input_layer.0.weight" in  checkpoint_state_dict.keys():
+        new_state_dict = {key.replace('model.sequential_layers.', '') : value for key, value in checkpoint_state_dict.items()}
+        #new_state_dict = {key.replace('.0.', '.') : value for key, value in new_state_dict.items()}
+        new_state_dict = {key.replace('layer_', 'l') : value for key, value in new_state_dict.items()}
+
 
     return model.load_state_dict(new_state_dict, strict=True)
 
@@ -236,30 +252,12 @@ def write_pdf_statistics():
     pass
 
 def main(dataset_for_inference):
-    #TODO alterar isso para abrir a parti do json de metadados
-    train_samples_len = (int(len(os.listdir(os.path.join(SAMPLES_PATH, "train")))/3))
-    test_samples_len = (int(len(os.listdir(os.path.join(SAMPLES_PATH, "test")))/3))
-
-    if dataset_for_inference == "train":
-        len_mode = train_samples_len
-        dataset = load_dataset("train")
-
-        save_histogram_path = os.path.join(EVALUATION_ROOT, "train", "histogram", MODEL_VERSION)
-        save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, "train", "error_from_image", "from_cnn1_output", MODEL_VERSION)
-        save_error_from_image_path = os.path.join(EVALUATION_ROOT, "train", "error_from_image","from_original_image", MODEL_VERSION)
-        original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT)
-
-    elif dataset_for_inference == "test":
-         len_mode = test_samples_len
-         dataset = load_dataset("test")
-
-         save_histogram_path = os.path.join(EVALUATION_ROOT, "test", "histogram", MODEL_VERSION, )
-         save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_cnn1_output", MODEL_VERSION)
-         save_error_from_image_path = os.path.join(EVALUATION_ROOT,  "test", "error_from_image", "from_original_image", MODEL_VERSION)
-         original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT)
-
-    else:
-        NotImplementedError
+    dataset = load_dataset(dataset_for_inference)
+    len_mode = int(len(os.listdir(os.path.join(SAMPLES_PATH, dataset_for_inference)))/3) #TODO alterar isso para abrir a partir do json de metadados
+    save_histogram_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "histogram", MODEL_VERSION)
+    save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "error_from_image", "from_cnn1_output", MODEL_VERSION)
+    save_error_from_image_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "error_from_image","from_original_image", MODEL_VERSION)
+    original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT)
 
     ### Loads model ###
     model = MODEL_NETWORK#.to('cuda')
@@ -271,7 +269,7 @@ def main(dataset_for_inference):
         model.load_state_dict(checkpoint['state_dict'], strict=True)  # NOTE: Some checkpoints state dicts might not have the expected keys, as seen in  https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
     except:
         load_state_dict(model, checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_states'][0])
+    #optimizer.load_state_dict(checkpoint['optimizer_states'][0])
 
     ### Training time ###
     # print("Training time")
@@ -287,6 +285,7 @@ def main(dataset_for_inference):
     print("Evaluation time")
     partial_loss, predicted_value, expected_value = evaluate(model=model, eval_loader=dataset)
 
+    #saves predicted values for analysis
     #transforms data before saving
     values_ziped = zip(predicted_value, expected_value)  #zips predicted and expected values
     column_array_values = np.array(list(values_ziped))  # converts to numpy
@@ -298,7 +297,7 @@ def main(dataset_for_inference):
         for line in column_array_values:
             file.write(f"{line[0]}, {line[1]}\n")
 
-    # ### Histograms ###
+    ### Histograms ###
     print("calculating histograms of predictions\n")
     predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
     expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
@@ -403,5 +402,4 @@ def main(dataset_for_inference):
 
 
 if __name__ == "__main__":
-    main(dataset_for_inference="train")
-    #main(dataset_for_inference="test")
+    main(dataset_for_inference=IMAGES_TO_EVALUATE)
