@@ -117,3 +117,9 @@ Scripts/.tmp.drivedownload/
 
 Scripts/wandb
 *.xlsx
+
+*.xlsx
+
+Scripts/wandb/run-20240725_105645-cmmzypai/logs/
+
+Scripts/wandb/
