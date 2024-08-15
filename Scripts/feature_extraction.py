@@ -24,7 +24,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     FEATURE_LIST = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["feature_list"]
     RECEPTIVE_FIELD_DIM = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["receptive_field_dim"]
     DESCRIPTOR_DEPTH = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["descriptor_depth"]
-    CNN1_OUTPUT_SHAPE =  settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_sHAPE"]
+    CNN1_OUTPUT_SHAPE =  settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]
     CNN1_OUTPUT_SIZE = CNN1_OUTPUT_SHAPE * CNN1_OUTPUT_SHAPE
 
 if SKIP_BLANK:
@@ -106,7 +106,7 @@ def main(load_path,  total_samples, stage):
         #le o valor do analito e expande a dimensão (atualmente 1d) para o tamanho do descritor da sua respectiva imagem
         sample_theoretical_value = torch.tensor(float(open(os.path.join(load_path, f"sample_{i}.txt")).read())).expand(len(sample_features)).to(torch.float32)
 
-        assert sample_features.shape[0] == CNN1_OUTPUT_SHAPE
+        assert sample_features.shape[0] == CNN1_OUTPUT_SIZE
 
         descriptors[i, ...] = sample_features
         expected_value[i, ...] = sample_theoretical_value

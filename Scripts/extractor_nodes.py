@@ -70,7 +70,7 @@ def main():
     # rescales to the size of first cnn
     reescaled_features = {feature_index: torchvision.transforms.Resize((heigh, width),torchvision.transforms.InterpolationMode.NEAREST)(feature_value).to(torch.float32) for feature_index, feature_value in features_dict.items() }
     sample_features = torch.cat([feature for feature in reescaled_features.values()], dim=0)
-    rf = 20  # receptive field value for each side of image
+    rf = 0  # receptive field value for each side of image
     sample_features = sample_features[:, rf : sample_features.shape[1] - rf,  rf : sample_features.shape[2] - rf]
     sample_features = torch.permute(sample_features, (1, 2, 0))
     #sample_features = torch.reshape(sample_features, (-1, DESCRIPTOR_DEPTH))

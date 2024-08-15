@@ -126,7 +126,7 @@ def main(sample_path: str, save_path: str, stage:str):
             image_heigth, image_width = actual_image.shape[0], actual_image.shape[1]
 
             #cropp for vgg input
-            cropped_image = actual_image#[int(image_heigth/2)-112:int(image_heigth/2)+112, int(image_width/2)-112:int(image_width/2)+112]
+            cropped_image = actual_image[int(image_heigth/2)-224:int(image_heigth/2)+224, int(image_width/2)-224:int(image_width/2)+224]
 
             #saves images
             plt.imsave(f"{save_path}/sample_{count_of_valid_samples}.png", cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)/255)

@@ -37,7 +37,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     LR = settings["models"]["learning_rate"]
     LOSS_FUNCTION = settings["models"]["loss_function"]
     GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
-    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]**2   # uses all the descriptors from an single image as a batch
+    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]**2   # uses all the descriptors from an single image as a batch
 
 networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1,
                                   "model_2": alkalinity.Model_2},
