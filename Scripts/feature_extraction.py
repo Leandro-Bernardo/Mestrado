@@ -24,9 +24,8 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     FEATURE_LIST = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["feature_list"]
     RECEPTIVE_FIELD_DIM = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["receptive_field_dim"]
     DESCRIPTOR_DEPTH = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["descriptor_depth"]
-    IMAGE_SHAPE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]
-    IMAGE_SIZE = IMAGE_SHAPE * IMAGE_SHAPE  # after the crop based on the receptive field
-
+    CNN1_OUTPUT_SHAPE =  settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_sHAPE"]
+    CNN1_OUTPUT_SIZE = CNN1_OUTPUT_SHAPE * CNN1_OUTPUT_SHAPE
 
 if SKIP_BLANK:
     LOAD_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", "train")
@@ -75,8 +74,8 @@ def main(load_path,  total_samples, stage):
 
     # creat untyped storage object for save the descriptors
     nbytes_float32 = torch.finfo(torch.float32).bits//8
-    descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_{stage}.bin"), shared = True, nbytes= (total_samples * IMAGE_SIZE * DESCRIPTOR_DEPTH) * nbytes_float32)).view(total_samples, IMAGE_SIZE, DESCRIPTOR_DEPTH)
-    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_anotation_{stage}.bin"), shared = True, nbytes= (total_samples * IMAGE_SIZE) * nbytes_float32)).view(total_samples, IMAGE_SIZE)
+    descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_{stage}.bin"), shared = True, nbytes= (total_samples * CNN1_OUTPUT_SIZE * DESCRIPTOR_DEPTH) * nbytes_float32)).view(total_samples, CNN1_OUTPUT_SIZE, DESCRIPTOR_DEPTH)
+    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_anotation_{stage}.bin"), shared = True, nbytes= (total_samples * CNN1_OUTPUT_SIZE) * nbytes_float32)).view(total_samples, CNN1_OUTPUT_SIZE)
 
     # process the features from all images
 
@@ -107,7 +106,7 @@ def main(load_path,  total_samples, stage):
         #le o valor do analito e expande a dimensão (atualmente 1d) para o tamanho do descritor da sua respectiva imagem
         sample_theoretical_value = torch.tensor(float(open(os.path.join(load_path, f"sample_{i}.txt")).read())).expand(len(sample_features)).to(torch.float32)
 
-        assert sample_features.shape[0] == IMAGE_SIZE
+        assert sample_features.shape[0] == CNN1_OUTPUT_SHAPE
 
         descriptors[i, ...] = sample_features
         expected_value[i, ...] = sample_theoretical_value
@@ -116,7 +115,8 @@ def main(load_path,  total_samples, stage):
     with open(os.path.join(SAVE_PATH, f"metadata_{stage}.json"), "w") as file:
         json.dump({
             "total_samples": total_samples,
-            "image_size": IMAGE_SIZE,
+            "image_shape": CNN1_OUTPUT_SHAPE,
+            "image_size": CNN1_OUTPUT_SIZE,
             "descriptor_depth": DESCRIPTOR_DEPTH
         }, file)
 

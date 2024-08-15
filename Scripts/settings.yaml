@@ -14,26 +14,26 @@ feature_extraction:
         [features.2, features.5, features.10]
       receptive_field_dim: 15
       descriptor_depth   : 448
-      image_shape        : 98
+      cnn1_output_shape        : 98
     Chloride  :
       feature_list:
         [features.2, features.5, features.10, features.15, features.20]
       receptive_field_dim: 27
       descriptor_depth   : 1472
-      image_shape        : 86
+      cnn1_output_shape        : 86
 
   resnet50:
     Alkalinity:
       feature_list: null
       receptive_field_dim: null
       descriptor_depth   : null
-      image_shape        : null
+      cnn1_output_shape        : null
     Chloride  :
       feature_list:
         [relu, layer1.2.relu_2, layer2.3.relu_2, layer3.5.relu_2] #, layer4.2.relu_2]
       receptive_field_dim: 0
       descriptor_depth   : 1856 #320 #832 # 3904
-      image_shape        : 112
+      cnn1_output_shape   : 342 #112
 
 
 

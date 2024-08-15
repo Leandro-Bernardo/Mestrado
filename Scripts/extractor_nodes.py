@@ -66,7 +66,7 @@ def main():
     # saves all the features in a dictionary
     features_dict = {f"feature{i}": feature[0] for i, (key,feature) in enumerate(features.items())}
     # get the dims form the first cnn layer
-    heigh, width = features_dict["feature0"].shape[1], features_dict["feature0"].shape[2]
+    dim, heigh, width = features_dict["feature0"].shape[0], features_dict["feature0"].shape[1], features_dict["feature0"].shape[2]
     # rescales to the size of first cnn
     reescaled_features = {feature_index: torchvision.transforms.Resize((heigh, width),torchvision.transforms.InterpolationMode.NEAREST)(feature_value).to(torch.float32) for feature_index, feature_value in features_dict.items() }
     sample_features = torch.cat([feature for feature in reescaled_features.values()], dim=0)
@@ -75,7 +75,8 @@ def main():
     sample_features = torch.permute(sample_features, (1, 2, 0))
     #sample_features = torch.reshape(sample_features, (-1, DESCRIPTOR_DEPTH))
 
-    print(f"\nDescriptor Depth: \n{json.dumps(sample_features.shape[-1])}")
+    print(f"\nImage shape after first cnn block: \n{dim, heigh, width}")
+    print(f"\nDescriptor Depth: \n{sample_features.shape[-1]}")
 
     # disabled auto save
     # settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["feature_list"] = nodes

@@ -43,7 +43,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     LR = settings["models"]["learning_rate"]
     LOSS_FUNCTION = settings["models"]["loss_function"]
     GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
-    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]**2   # uses all the descriptors from an single image as a batch
+    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]**2   # uses all the descriptors from an single image as a batch
     BATCH_NORM = settings["models"]["batch_normalization"]
     # evaluation variables
     #EPOCHS = 1  #training epochs. Disabled
@@ -51,8 +51,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     IMAGES_TO_EVALUATE = settings["statistical_analysis"]["images_to_evaluate"]
     RECEPTIVE_FIELD_DIM = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["receptive_field_dim"]
     DESCRIPTOR_DEPTH = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["descriptor_depth"]
-    IMAGE_SHAPE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]
-    IMAGE_SIZE = IMAGE_SHAPE * IMAGE_SHAPE  # after the crop based on the receptive field
+    CNN1_OUTPUT_SHAPE =  settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]
 
 
 networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
@@ -299,8 +298,8 @@ def main(dataset_for_inference):
 
     ### Histograms ###
     print("calculating histograms of predictions\n")
-    predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
-    expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, IMAGE_SHAPE, IMAGE_SHAPE)))}
+    predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, CNN1_OUTPUT_SHAPE, CNN1_OUTPUT_SHAPE)))}
+    expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, CNN1_OUTPUT_SHAPE, CNN1_OUTPUT_SHAPE)))}
 
     min_value, max_value = get_min_max_values(dataset_for_inference)
 
@@ -368,7 +367,7 @@ def main(dataset_for_inference):
 
     # reshapes to the size of the output from the first cnn in vgg11  and the total of images
     print("reshaping images to match cnn1 output\n")
-    partial_loss_from_cnn1_output = np.reshape(partial_loss, (-1, IMAGE_SHAPE, IMAGE_SHAPE))
+    partial_loss_from_cnn1_output = np.reshape(partial_loss, (-1, CNN1_OUTPUT_SHAPE, CNN1_OUTPUT_SHAPE))
 
     for i, image in enumerate(partial_loss_from_cnn1_output):
         plt.imsave(os.path.join(save_error_from_cnn1_path, f"sample_{i}.png"), image)

@@ -48,7 +48,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     LR = settings["models"]["learning_rate"]
     LOSS_FUNCTION = settings["models"]["loss_function"]
     GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
-    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]**2   # uses all the descriptors from an single image as a batch
+    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]**2   # uses all the descriptors from an single image as a batch
     BATCH_NORM = settings["models"]["batch_normalization"]
 
     # evaluation variables
@@ -57,8 +57,6 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     IMAGES_TO_EVALUATE = settings["statistical_analysis"]["images_to_evaluate"]
     RECEPTIVE_FIELD_DIM = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["receptive_field_dim"]
     DESCRIPTOR_DEPTH = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["descriptor_depth"]
-    IMAGE_SHAPE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["image_shape"]
-    IMAGE_SIZE = IMAGE_SHAPE * IMAGE_SHAPE  # after the crop based on the receptive field
 
 ### Variables for pmf based model ###
 # checkpoint path
