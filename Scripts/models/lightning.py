@@ -17,7 +17,7 @@ from typing import Any, List, Tuple, TypeVar, Optional, Dict
 
 
 class DataModule(LightningDataModule):
-    def __init__(self, *, descriptor_root: str, stage: str, train_batch_size: int = 1, num_workers: int = 15):
+    def __init__(self, *, descriptor_root: str, stage: str, train_batch_size: int , num_workers: int):
         super().__init__()
         self.descriptor_root = descriptor_root
         self.train_batch_size = train_batch_size
@@ -25,14 +25,15 @@ class DataModule(LightningDataModule):
         self.save_hyperparameters() # saves hyperparameters in checkpoint file
 
     def _load_dataset(self, descriptor_root: str, stage: str):
-        with open(os.path.join(self.descriptor_root, f'metadata_{stage}.json'), "r") as file:
+        with open(os.path.join(descriptor_root, f'metadata_{stage}.json'), "r") as file:
             metadata = json.load(file)
         total_samples = metadata['total_samples']
+        image_shape = metadata['image_shape']
         image_size = metadata['image_size']
         descriptor_depth = metadata['descriptor_depth']
         nbytes_float32 = torch.finfo(torch.float32).bits//8
-
         #NOTE:
+        #NOTE 2: changed (now both are written and readed in same format)
         # at the moment, descriptors are saved in the format (num samples, image_size, descriptors_depth), but they are read in format (num samples * image_size,descriptors_depth).
         # expected_value is saved in format (num samples, image_size), and read in format (num samples * image_size)
         descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_{stage}.bin"), shared = False, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth)
