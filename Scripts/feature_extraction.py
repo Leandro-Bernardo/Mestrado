@@ -59,11 +59,11 @@ def main(load_path,  total_samples, stage):
     for i in range(int(len(os.listdir(load_path))/3)):
             cropped_images.append(cv2.imread(os.path.join(load_path, f"sample_{i}.png")))
 
-    #cria o symbolic trace do torch.FX
+    #creates a symbolic trace from torch.FX
     train_nodes, eval_nodes = get_graph_node_names(feature_extractor)
     #print(train_nodes)
 
-    #cria o extrator de caracteristicas
+    #creates the feature extractor object
     feature_extraction = create_feature_extractor(
                                                 model = feature_extractor,
                                                 return_nodes= FEATURE_LIST
@@ -74,13 +74,13 @@ def main(load_path,  total_samples, stage):
 
     # creat untyped storage object for save the descriptors
     nbytes_float32 = torch.finfo(torch.float32).bits//8
-    descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_{stage}.bin"), shared = True, nbytes= (total_samples * CNN1_OUTPUT_SIZE * DESCRIPTOR_DEPTH) * nbytes_float32)).view(total_samples, CNN1_OUTPUT_SIZE, DESCRIPTOR_DEPTH)
-    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_anotation_{stage}.bin"), shared = True, nbytes= (total_samples * CNN1_OUTPUT_SIZE) * nbytes_float32)).view(total_samples, CNN1_OUTPUT_SIZE)
+    descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_{stage}.bin"), shared = True, nbytes= (total_samples * CNN1_OUTPUT_SIZE * DESCRIPTOR_DEPTH) * nbytes_float32)).view(total_samples * CNN1_OUTPUT_SIZE, DESCRIPTOR_DEPTH)
+    expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(SAVE_PATH, f"descriptors_anotation_{stage}.bin"), shared = True, nbytes= (total_samples * CNN1_OUTPUT_SIZE) * nbytes_float32)).view(total_samples * CNN1_OUTPUT_SIZE)
 
     # process the features from all images
 
     #for i, (sample_key, sample) in enumerate(image_tensor.items()):  #extrai caracteristicas das camadas de convolucao desejadas
-
+    index = 0
     for i, _ in enumerate(cropped_images):
         print(f"extracting features from {stage} samples {i}/{len(cropped_images)}")
         img = cv2.cvtColor(cropped_images[i].astype('uint8'),cv2.COLOR_BGR2RGB) # select an image
@@ -94,23 +94,27 @@ def main(load_path,  total_samples, stage):
 
         heigh, width = features_dict["cnn_block1"].shape[1], features_dict["cnn_block1"].shape[2]
 
-        #reescala os mapas de caracteristicas para o tamanho da primeira camada
+        #reescales the feature maps to the size of the first cnn block output
         reescaled_features = {feature_index: torchvision.transforms.Resize((heigh, width),torchvision.transforms.InterpolationMode.NEAREST)(feature_value).to(torch.float32) for feature_index, feature_value in features_dict.items() }
 
-        #concatena todas as imagens em um unico tensor e faz o cropp baseado no campo receptivo
+        #concatenates all imagens into a single tensor and makes a cropp based on receptive field
         sample_features = torch.cat([feature for feature in reescaled_features.values()], dim=0)
         rf = int((RECEPTIVE_FIELD_DIM - 1)/2)  # receptive field value for each side of image
         sample_features = sample_features[:, rf : sample_features.shape[1] - rf,  rf : sample_features.shape[2] - rf]
         sample_features = torch.permute(sample_features, (1, 2, 0))
         sample_features = torch.reshape(sample_features, (-1, DESCRIPTOR_DEPTH))
-        #le o valor do analito e expande a dimensão (atualmente 1d) para o tamanho do descritor da sua respectiva imagem
+        #reades the analyte's concentration (groundtruth) and expands its (to match the descriptors' size)
         sample_theoretical_value = torch.tensor(float(open(os.path.join(load_path, f"sample_{i}.txt")).read())).expand(len(sample_features)).to(torch.float32)
 
         assert sample_features.shape[0] == CNN1_OUTPUT_SIZE
-
-        descriptors[i, ...] = sample_features
-        expected_value[i, ...] = sample_theoretical_value
-
+        assert sample_features.shape[1] == DESCRIPTOR_DEPTH
+        #iterates over the descriptors and write its values into the Untyped Storage Object
+        for j in range(sample_features.shape[0]):
+            descriptors[index] = sample_features[j]
+            expected_value[index] = sample_theoretical_value[j]
+            index+=1
+        print(f"Written lines: {index} \nExpected lines: {total_samples * CNN1_OUTPUT_SIZE}")
+        assert index == total_samples * CNN1_OUTPUT_SIZE  "written lines is lesser than expected lines"
 
     with open(os.path.join(SAVE_PATH, f"metadata_{stage}.json"), "w") as file:
         json.dump({
