@@ -21,30 +21,33 @@ else:
 torch.set_float32_matmul_precision('high')
 
 ### Variables ###
-# reads setting`s json
+# reads setting`s yaml
 with open(os.path.join(".", "settings.yaml"), "r") as file:
     settings = yaml.load(file, Loader=yaml.FullLoader)
-
+    # global variables
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]
     MODEL_VERSION = settings["network_model"]
     USE_CHECKPOINT = settings["use_checkpoint"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
-
     # training hyperparams
     MAX_EPOCHS = settings["models"]["max_epochs"]
     LR = settings["models"]["learning_rate"]
+    LR_PATIENCE = settings["models"]["learning_rate_patience"]
+    EARLY_STOP_PATIENCE = 2*LR_PATIENCE + 1
     LOSS_FUNCTION = settings["models"]["loss_function"]
     GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
-    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]**2   # uses all the descriptors from an single image as a batch
+    BATCH_SIZE = 1000000#settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]**2   # uses all the descriptors from an single image as a batch
+    # data variables
+    DESCRIPTOR_DEPTH = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["descriptor_depth"]
 
 networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1,
                                   "model_2": alkalinity.Model_2},
                     "Chloride": {"model_1": chloride.Model_1,
                                  "model_2": chloride.Model_2,
                                  "model_3": chloride.Model_3}}
-MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION]
+MODEL_NETWORK = chloride.Model_3 #networks_choices[ANALYTE][MODEL_VERSION]
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
 LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
@@ -83,10 +86,10 @@ def main():
     data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", train_batch_size= BATCH_SIZE, num_workers=2)
 
     if USE_CHECKPOINT:
-        model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR,  learning_rate_patience=10, checkpoint_path=CHECKPOINT_PATH)
+        model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR,  learning_rate_patience=10, checkpoint_path=CHECKPOINT_PATH, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = None)
 
     else:
-        model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR, learning_rate_patience=10)
+        model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR, learning_rate_patience=10, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = None)
 
     # train the model
     trainer = Trainer(
