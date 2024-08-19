@@ -68,10 +68,10 @@ class BaseModel(LightningModule):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.learning_rate_patience = learning_rate_patience
-        self.metrics = ModuleDict({mode_name: MetricCollection({
-                                                                "MAE": MeanAbsoluteError(),
-                                                                "MAPE": MeanAbsolutePercentageError(),
-                                                                "MSE": MeanSquaredError(),
+        self.metrics = ModuleDict({mode_name: MetricCollection({  # https://lightning.ai/docs/torchmetrics/stable/pages/overview.html#metric-kwargs
+                                                                "MAE": MeanAbsoluteError(compute_on_cpu=True),
+                                                                "MAPE": MeanAbsolutePercentageError(compute_on_cpu=True),
+                                                                "MSE": MeanSquaredError(compute_on_cpu=True),
                                                                 #"WMAPE": WeightedMeanAbsolutePercentageError(),
                                                                 #"SMAPE": SymmetricMeanAbsolutePercentageError(),
                                                                }) for mode_name in ["Train", "Val", "Test"]})
