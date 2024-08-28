@@ -34,7 +34,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     # global variables
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]
-    MODEL_VERSION = "best"#settings["network_model"]
+    MODEL_VERSION = settings["chosen_model"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
 
@@ -59,8 +59,8 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                     "Chloride": {"model_1": chloride.Model_1(),
                                  "model_2": chloride.Model_2(),
                                  "model_3": chloride.Model_3(),
-                                 #"best"   : chloride.Best_Model(DESCRIPTOR_DEPTH),
-                                 "best_model_3blocks_resnet50":chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH)}}
+                                 "best_model_4blocks_resnet50": chloride.Best_Model_4blocks_resnet50(DESCRIPTOR_DEPTH),
+                                 "best_model_3blocks_resnet50": chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH)}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -76,7 +76,7 @@ if SKIP_BLANK:
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # results path
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors","no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}","no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 else:
     # model path
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
@@ -86,7 +86,7 @@ else:
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # results path
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "Udescriptors", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 
 CHECKPOINT_FILENAME = f"checkpoint.ckpt"
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)
@@ -103,15 +103,10 @@ EXPECTED_RANGE = {
 #creates directories
 os.makedirs(EVALUATION_ROOT, exist_ok =True)
 
-os.makedirs(os.path.join(EVALUATION_ROOT, "train", "predicted_values", MODEL_VERSION), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "train", "histogram", MODEL_VERSION), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "train", "error_from_image", "from_cnn1_output", MODEL_VERSION), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "train", "error_from_image", "from_original_image", MODEL_VERSION), exist_ok =True)
-
-os.makedirs(os.path.join(EVALUATION_ROOT, "test", "predicted_values", MODEL_VERSION), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "test", "histogram", MODEL_VERSION), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_cnn1_output", MODEL_VERSION), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "test", "error_from_image", "from_original_image", MODEL_VERSION), exist_ok =True)
+os.makedirs(os.path.join(EVALUATION_ROOT, MODEL_VERSION, IMAGES_TO_EVALUATE, "predicted_values"), exist_ok =True)
+os.makedirs(os.path.join(EVALUATION_ROOT, MODEL_VERSION, IMAGES_TO_EVALUATE, "histogram"), exist_ok =True)
+os.makedirs(os.path.join(EVALUATION_ROOT, MODEL_VERSION, IMAGES_TO_EVALUATE, "error_from_image", "from_cnn1_output"), exist_ok =True)
+os.makedirs(os.path.join(EVALUATION_ROOT, MODEL_VERSION, IMAGES_TO_EVALUATE, "error_from_image", "from_original_image"), exist_ok =True)
 
 ### Utilities functions and classes ###
 
@@ -254,9 +249,9 @@ def write_pdf_statistics():
 def main(dataset_for_inference):
     dataset = load_dataset(dataset_for_inference)
     len_mode = int(len(os.listdir(os.path.join(SAMPLES_PATH, dataset_for_inference)))/3) #TODO alterar isso para abrir a partir do json de metadados
-    save_histogram_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "histogram", MODEL_VERSION)
-    save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "error_from_image", "from_cnn1_output", MODEL_VERSION)
-    save_error_from_image_path = os.path.join(EVALUATION_ROOT, dataset_for_inference, "error_from_image","from_original_image", MODEL_VERSION)
+    save_histogram_path = os.path.join(EVALUATION_ROOT, MODEL_VERSION, dataset_for_inference, "histogram")
+    save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, MODEL_VERSION, dataset_for_inference, "error_from_image", "from_cnn1_output")
+    save_error_from_image_path = os.path.join(EVALUATION_ROOT, MODEL_VERSION, dataset_for_inference, "error_from_image","from_original_image")
     original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT)
 
     ### Loads model ###
@@ -290,10 +285,10 @@ def main(dataset_for_inference):
     values_ziped = zip(predicted_value, expected_value)  #zips predicted and expected values
     column_array_values = np.array(list(values_ziped))  # converts to numpy
     #saves prediction`s data
-    with open(os.path.join(EVALUATION_ROOT, dataset_for_inference, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "w") as file: # overrides if file exists
+    with open(os.path.join(EVALUATION_ROOT, MODEL_VERSION, dataset_for_inference, "predicted_values",  f"{MODEL_VERSION}.txt"), "w") as file: # overrides if file exists
         file.write("predicted_value,expected_value\n")
 
-    with open(os.path.join(EVALUATION_ROOT, dataset_for_inference, "predicted_values", MODEL_VERSION, f"{MODEL_VERSION}.txt"), "a+") as file:
+    with open(os.path.join(EVALUATION_ROOT, MODEL_VERSION, dataset_for_inference, "predicted_values",  f"{MODEL_VERSION}.txt"), "a+") as file:
         for line in column_array_values:
             file.write(f"{line[0]}, {line[1]}\n")
 
