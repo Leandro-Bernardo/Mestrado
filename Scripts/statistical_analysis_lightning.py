@@ -59,7 +59,8 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                     "Chloride": {"model_1": chloride.Model_1(),
                                  "model_2": chloride.Model_2(),
                                  "model_3": chloride.Model_3(),
-                                 "best"   : chloride.Best_Model(DESCRIPTOR_DEPTH)}}
+                                 #"best"   : chloride.Best_Model(DESCRIPTOR_DEPTH),
+                                 "best_model_3blocks_resnet50":chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH)}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
