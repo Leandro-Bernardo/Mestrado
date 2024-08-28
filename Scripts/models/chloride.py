@@ -218,6 +218,9 @@ class Zero_Dawn(torch.nn.Module):
         # assures first layer's neuron (output) is lower than the descriptor depth
         self.layers_neuron[f"input_layer"] = self.largest_power_of_2_less_than_or_equal_to(descriptor_depth)
 
+        # assures lower layers have same or fewer neurons (output) than higher layers
+        # if self.layers_neuron[f"layer_{self.num_hidden_layers}"] > self.layers_neuron[f"input_layer"] :
+        #         self.layers_neuron[f"layer_{self.num_hidden_layers}"] = self.layers_neuron[f"input_layer"]
         for i in range(1, self.num_hidden_layers):
             if self.layers_neuron[f"layer_{i}"] > self.layers_neuron[f"layer_{i+1}"]:
                 self.layers_neuron[f"layer_{i+1}"] = self.layers_neuron[f"layer_{i}"]
@@ -275,7 +278,6 @@ class Zero_Dawn(torch.nn.Module):
         # ... middle layers
         else:
             return self.sweep_config["dropout_middle_layers"]
-
 
 class Best_Model_4blocks_resnet50(torch.nn.Module):
     def __init__(self, descriptor_depth: int, sweep_config: Optional[Dict] = None, device: str = "cuda", **kwargs):
@@ -346,7 +348,7 @@ class Best_Model_4blocks_resnet50(torch.nn.Module):
 
 
 
-class Best_Model_3blocks_resnet50(torch.nn.Module):
+class Best_Model_3blocks_resnet50(torch.nn.Module):   #https://wandb.ai/uff-and-prograf/Chloride/runs/yhq4t8ow
     def __init__(self, descriptor_depth: int, sweep_config: Optional[Dict] = None, device: str = "cuda", **kwargs):
         super().__init__()
 
