@@ -20,6 +20,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     ANALYTE = settings["analyte"]
     SKIP_BLANK = settings["skip_blank"]
     PROCESS_BLANK_FILES_SEPARATEDLY = settings["process_blank_files_separatedly"]
+    IMAGE_SIZE = settings["image_size"]
 
 SAMPLES_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "train_samples", f"{ANALYTE}")
 SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "val_samples", f"{ANALYTE}")
@@ -126,7 +127,8 @@ def main(sample_path: str, save_path: str, stage:str):
             image_heigth, image_width = actual_image.shape[0], actual_image.shape[1]
 
             #cropp for vgg input
-            cropped_image = actual_image[int(image_heigth/2)-224:int(image_heigth/2)+224, int(image_width/2)-224:int(image_width/2)+224]
+            crop = IMAGE_SIZE/2
+            cropped_image = actual_image[int(image_heigth/2)-crop : int(image_heigth/2)+crop, int(image_width/2)-crop : int(image_width/2)+crop]
 
             #saves images
             plt.imsave(f"{save_path}/sample_{count_of_valid_samples}.png", cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)/255)
