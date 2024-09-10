@@ -17,27 +17,27 @@ from typing import Any, List, Tuple, TypeVar, Optional, Dict
 
 
 class DataModule(LightningDataModule):
-    def __init__(self, *, descriptor_root: str, stage: str, train_batch_size: int , num_workers: int):
+    def __init__(self, *, descriptor_root: str, stage: str, batch_size: int, num_datasets: int, num_workers: int):
         super().__init__()
         self.descriptor_root = descriptor_root
-        self.train_batch_size = train_batch_size
+        self.batch_size = batch_size
+        self.num_datasets = num_datasets
         self.num_workers = num_workers
         self.save_hyperparameters() # saves hyperparameters in checkpoint file
 
-    def _load_dataset(self, descriptor_root: str, stage: str):
-        with open(os.path.join(descriptor_root, f'metadata_{stage}.json'), "r") as file:
+    def _load_dataset(self, descriptor_root: str, stage: str, dataset_index):
+        with open(os.path.join(descriptor_root, f'metadata_{stage}_dataset{dataset_index}.json'), "r") as file:
             metadata = json.load(file)
         total_samples = metadata['total_samples']
         image_shape = metadata['image_shape']
         image_size = metadata['image_size']
         descriptor_depth = metadata['descriptor_depth']
         nbytes_float32 = torch.finfo(torch.float32).bits//8
-        #NOTE:
+        #NOTE: at the moment, descriptors are saved in the format (num samples, image_size, descriptors_depth), but they are read in format (num samples * image_size,descriptors_depth).
+        #      expected_value is saved in format (num samples, image_size), and read in format (num samples * image_size)
         #NOTE 2: changed (now both are written and readed in same format)
-        # at the moment, descriptors are saved in the format (num samples, image_size, descriptors_depth), but they are read in format (num samples * image_size,descriptors_depth).
-        # expected_value is saved in format (num samples, image_size), and read in format (num samples * image_size)
-        descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_{stage}.bin"), shared = False, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth)
-        expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_anotation_{stage}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
+        descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_{stage}_dataset{dataset_index}.bin"), shared = False, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth)
+        expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_anotation_{stage}_dataset{dataset_index}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
 
         return TensorDataset(descriptors, expected_value)
 
@@ -51,10 +51,10 @@ class DataModule(LightningDataModule):
             self.test_subset = self._load_dataset(self.descriptor_root, "test")
 
     def train_dataloader(self):
-        return DataLoader(self.train_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle= True, drop_last=True)
+        return DataLoader(self.train_subset, batch_size=self.batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle= True, drop_last=True)
 
     def val_dataloader(self):
-        return DataLoader(self.val_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
+        return DataLoader(self.val_subset, batch_size=self.batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
 
     def test_dataloader(self):
         return DataLoader(self.test_subset,  batch_size=1, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
@@ -114,6 +114,10 @@ class BaseModel(LightningModule):
 
     def test_step(self, batch: List[torch.tensor]):#, batch_idx: int):
         return self._any_step(batch, "Test")
+
+    def on_train_batch_end(self, *args, **kwargs):
+        pass
+
 
     def _any_epoch_end(self, stage: str):
         metrics: MetricCollection = self.metrics[stage]  # type: ignore
