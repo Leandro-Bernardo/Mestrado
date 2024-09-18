@@ -121,7 +121,7 @@ def main():
         # train the model
         trainer = Trainer(
                         logger= logger,
-                        accelerator="cuda",
+                        accelerator="gpu", # NOTE alterado de cuda para gpu
                         max_epochs=MAX_EPOCHS,
                         callbacks= [checkpoint_callback,
                                     LearningRateMonitor(logging_interval='epoch'),

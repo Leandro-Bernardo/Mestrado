@@ -36,8 +36,9 @@ class DataModule(LightningDataModule):
         #NOTE 2: changed (now both are written and readed in same format)
         # at the moment, descriptors are saved in the format (num samples, image_size, descriptors_depth), but they are read in format (num samples * image_size,descriptors_depth).
         # expected_value is saved in format (num samples, image_size), and read in format (num samples * image_size)
-        descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_{stage}.bin"), shared = False, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth)
-        expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_anotation_{stage}.bin"), shared = False, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
+        # NOTE 3 alterado shared para true
+        descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_{stage}.bin"), shared = True, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth)
+        expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_anotation_{stage}.bin"), shared = True, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
 
         return TensorDataset(descriptors, expected_value)
 
@@ -51,13 +52,13 @@ class DataModule(LightningDataModule):
             self.test_subset = self._load_dataset(self.descriptor_root, "test")
 
     def train_dataloader(self):
-        return DataLoader(self.train_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle= True, drop_last=True)
+        return DataLoader(self.train_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle=True, drop_last=True)
 
     def val_dataloader(self):
-        return DataLoader(self.val_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
+        return DataLoader(self.val_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle=False, drop_last=True)
 
     def test_dataloader(self):
-        return DataLoader(self.test_subset,  batch_size=1, num_workers=self.num_workers, persistent_workers=True, shuffle= False, drop_last=True)
+        return DataLoader(self.test_subset,  batch_size=1, num_workers=self.num_workers, persistent_workers=True, shuffle=False, drop_last=True)
 
 class BaseModel(LightningModule):
     def __init__(self, *, dataset: DataLoader, model: torch.nn.Module, batch_size: int, loss_function: torch.nn.Module, learning_rate: float, learning_rate_patience: int = None, descriptor_depth: int, sweep_config: Dict, **kwargs: Any):
@@ -92,7 +93,7 @@ class BaseModel(LightningModule):
     def forward(self, x: Any):
      return self.model(x)
 
-
+    # TODO verificar o dado de entrada
     #defines basics operations for train, validadion and test
     def _any_step(self, batch: Tuple[torch.tensor, torch.tensor], stage: str):
         X, y = batch[0].squeeze(), batch[1].squeeze()

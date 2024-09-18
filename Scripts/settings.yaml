@@ -3,26 +3,27 @@ skip_blank: false
 process_blank_files_separatedly: false
 image_size: 448
 feature_extractor: resnet50
-cnn_blocks: 3
-network_model: zero_dawn
-chosen_model: "best_model_3blocks_resnet50"
+cnn_blocks: 2
+network_model: model_3
+chosen_model: "best_Model_2blocks_resnet50_imgsize_448"
 use_checkpoint: false
 sweep_id: false
 
 feature_extraction:
+  samples_per_dataset: 100
   vgg11:
     Alkalinity:
       feature_list:
         [features.2, features.5, features.10]
       receptive_field_dim: 15
       descriptor_depth   : 448
-      cnn1_output_shape        : 98
+      cnn1_output_shape  : 98
     Chloride  :
       feature_list:
         [features.2, features.5, features.10, features.15, features.20]
       receptive_field_dim: 27
       descriptor_depth   : 1472
-      cnn1_output_shape        : 86
+      cnn1_output_shape  : 86
 
   resnet50:
     Alkalinity:
@@ -32,10 +33,10 @@ feature_extraction:
       cnn1_output_shape        : null
     Chloride  :
       feature_list:
-        [relu, layer1.2.relu_2, layer2.3.relu_2] #, layer3.5.relu_2] #, layer4.2.relu_2]
+        [relu, layer1.2.relu_2] #, layer2.3.relu_2] #, layer3.5.relu_2] #, layer4.2.relu_2]
       receptive_field_dim: 0
-      descriptor_depth   :  832 #320 #1856 #320 #832 # 3904
-      cnn1_output_shape   : 112 #112
+      descriptor_depth   :  320 #1856 #320 #832 # 3904
+      cnn1_output_shape   : 224 #112
 
 models:
   max_epochs: 400

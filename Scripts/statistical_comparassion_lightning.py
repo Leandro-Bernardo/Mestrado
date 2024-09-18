@@ -42,13 +42,14 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     MODEL_VERSION = settings["chosen_model"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
+    IMAGE_SIZE = settings["image_size"]
 
     # training hyperparams variables
     MAX_EPOCHS = settings["models"]["max_epochs"]
     LR = settings["models"]["learning_rate"]
     LOSS_FUNCTION = settings["models"]["loss_function"]
-    GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
-    BATCH_SIZE = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]**2   # uses all the descriptors from an single image as a batch
+    GRADIENT_CLIPPING = 0.24487266642640568 #settings["models"]["gradient_clipping"]
+    BATCH_SIZE = 12320#settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]**2   # uses all the descriptors from an single image as a batch
     BATCH_NORM = settings["models"]["batch_normalization"]
 
     # evaluation variables
@@ -72,7 +73,8 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                  "model_2": chloride.Model_2(),
                                  "model_3": chloride.Model_3(),
                                  "best_model_4blocks_resnet50": chloride.Best_Model_4blocks_resnet50(DESCRIPTOR_DEPTH),
-                                 "best_model_3blocks_resnet50": chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH)}}
+                                 "best_model_3blocks_resnet50": chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH),
+                                 "best_Model_2blocks_resnet50_imgsize_448": chloride.Best_Model_2blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH)}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -97,7 +99,7 @@ ProcessedSampleDataset = dataset_processor[f"{ANALYTE}"]["processed_dataset"]
 
 if SKIP_BLANK == True and  PROCESS_BLANK_FILES_SEPARATEDLY == False:  # dont use blanks
     # model path
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMAGE_SIZE})")
     # data paths
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
@@ -107,7 +109,7 @@ if SKIP_BLANK == True and  PROCESS_BLANK_FILES_SEPARATEDLY == False:  # dont use
 
 elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == False:  # use blanks and process it together
     # model paths
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMAGE_SIZE})")
     # data paths
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
@@ -117,7 +119,7 @@ elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == False:  # use bl
 
 elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == True:  # process blanks separatedly
     # model path
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMAGE_SIZE})")
     # data paths
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
@@ -366,7 +368,7 @@ def main(dataset_for_inference: str):
     #         df_stats.loc[id, "std"] = math.sqrt(df_stats.loc[id, "variance"])
     #     blank_df.to_excel(os.path.join(f"{SAVE_EXCEL_PATH}", "blank_statistics.xlsx"))
 
-    excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks).xlsx")
+    excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(image_size_{IMAGE_SIZE}).xlsx")
     df_stats.to_excel(excel_filename)
 
     # #PMF BASED MODEL
