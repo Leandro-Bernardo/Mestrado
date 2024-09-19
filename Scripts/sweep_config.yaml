@@ -10,8 +10,7 @@ metric:
   goal: minimize
 parameters:
   batch_size:
-    min: 5000
-    max: 20000
+    value: 1000
   lr:
     max: 0.0001
     min: 0.0000000000001

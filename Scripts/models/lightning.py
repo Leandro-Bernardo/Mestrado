@@ -17,10 +17,10 @@ from typing import Any, List, Tuple, TypeVar, Optional, Dict
 
 
 class DataModule(LightningDataModule):
-    def __init__(self, *, descriptor_root: str, stage: str, train_batch_size: int , num_workers: int):
+    def __init__(self, *, descriptor_root: str, batch_size: int , num_workers: int):
         super().__init__()
         self.descriptor_root = descriptor_root
-        self.train_batch_size = train_batch_size
+        self.batch_size = batch_size
         self.num_workers = num_workers
         self.save_hyperparameters() # saves hyperparameters in checkpoint file
 
@@ -52,10 +52,10 @@ class DataModule(LightningDataModule):
             self.test_subset = self._load_dataset(self.descriptor_root, "test")
 
     def train_dataloader(self):
-        return DataLoader(self.train_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle=True, drop_last=True)
+        return DataLoader(self.train_subset, batch_size=self.batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle=True, drop_last=True)
 
     def val_dataloader(self):
-        return DataLoader(self.val_subset, batch_size=self.train_batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle=False, drop_last=True)
+        return DataLoader(self.val_subset, batch_size=self.batch_size, num_workers=self.num_workers, persistent_workers=True, shuffle=False, drop_last=True)
 
     def test_dataloader(self):
         return DataLoader(self.test_subset,  batch_size=1, num_workers=self.num_workers, persistent_workers=True, shuffle=False, drop_last=True)
