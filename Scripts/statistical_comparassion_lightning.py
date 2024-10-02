@@ -74,7 +74,8 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                  "model_3": chloride.Model_3(),
                                  "best_model_4blocks_resnet50": chloride.Best_Model_4blocks_resnet50(DESCRIPTOR_DEPTH),
                                  "best_model_3blocks_resnet50": chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH),
-                                 "best_Model_2blocks_resnet50_imgsize_448": chloride.Best_Model_2blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH)}}
+                                 #"best_model_2blocks_resnet50": chloride.Best_Model_2blocks_resnet50(DESCRIPTOR_DEPTH),
+                                 "best_model_2blocks_resnet50_img_size_448": chloride.Best_Model_2blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH)}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -105,7 +106,7 @@ if SKIP_BLANK == True and  PROCESS_BLANK_FILES_SEPARATEDLY == False:  # dont use
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # save path
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), f"{ANALYTE}", "evaluation" , "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", MODEL_VERSION, f"{IMAGES_TO_EVALUATE}", "statistics")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", MODEL_VERSION, f"{IMAGES_TO_EVALUATE}", "statistics")
 
 elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == False:  # use blanks and process it together
     # model paths
@@ -115,7 +116,7 @@ elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == False:  # use bl
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # save path
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), f"{ANALYTE}", "evaluation" , "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", MODEL_VERSION, f"{IMAGES_TO_EVALUATE}", "statistics")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", MODEL_VERSION, f"{IMAGES_TO_EVALUATE}", "statistics")
 
 elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == True:  # process blanks separatedly
     # model path
@@ -129,7 +130,7 @@ elif SKIP_BLANK == False and PROCESS_BLANK_FILES_SEPARATEDLY == True:  # process
     BLANK_IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "processed_blank", f"{IMAGES_TO_EVALUATE}")
     BLANK_DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "processed_blank", f"{IMAGES_TO_EVALUATE}")
     # save path
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), f"{ANALYTE}", "evaluation" , "processed_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", MODEL_VERSION, f"{IMAGES_TO_EVALUATE}", "statistics")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "processed_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", MODEL_VERSION, f"{IMAGES_TO_EVALUATE}", "statistics")
 
 elif SKIP_BLANK == True and PROCESS_BLANK_FILES_SEPARATEDLY == True:  # missmatch combination
     raise Exception('''
@@ -236,7 +237,7 @@ class Statistics():
 
         self.mean = torch.mean(self.sample_predictions_vector).item()
         self.median = torch.median(self.sample_predictions_vector).item()
-        self.mode = scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
+        self.mode =  self.mode = torch.mode(self.sample_predictions_vector.flatten())[0].item()#scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
         self.variance = torch.var(self.sample_predictions_vector).item()
         self.std = torch.std(self.sample_predictions_vector).item()
         self.mad = scipy.stats.median_abs_deviation(np.array(sample_predictions_vector).flatten())
