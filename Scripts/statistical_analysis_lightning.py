@@ -37,6 +37,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     MODEL_VERSION = settings["chosen_model"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
+    IMG_SIZE = settings["image_size"]
 
     # training hyperparams variables
     MAX_EPOCHS = settings["models"]["max_epochs"]
@@ -60,7 +61,9 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                  "model_2": chloride.Model_2(),
                                  "model_3": chloride.Model_3(),
                                  "best_model_4blocks_resnet50": chloride.Best_Model_4blocks_resnet50(DESCRIPTOR_DEPTH),
-                                 "best_model_3blocks_resnet50": chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH)}}
+                                 "best_model_3blocks_resnet50": chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH),
+                                 #"best_model_2blocks_resnet50": chloride.Best_Model_2blocks_resnet50(DESCRIPTOR_DEPTH),
+                                 "best_model_2blocks_resnet50_img_size_448": chloride.Best_Model_2blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH)}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
@@ -69,7 +72,7 @@ LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
 
 if SKIP_BLANK:
     # model path
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMG_SIZE})")
     # data paths
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank"))
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank")
@@ -79,7 +82,7 @@ if SKIP_BLANK:
     EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}","no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
 else:
     # model path
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMG_SIZE})")
     # data paths
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank"))
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank")

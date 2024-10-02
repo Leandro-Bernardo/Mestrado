@@ -110,7 +110,7 @@ def main():
         # checkpoint callback setting
         checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename= run.name, save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=False, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
         # load data module
-        data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, stage="train", batch_size= configs["batch_size"], num_workers=2 )
+        data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, batch_size= configs["batch_size"], num_workers=2 )
 
         if USE_CHECKPOINT:
             model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"],  learning_rate_patience=LR_PATIENCE, checkpoint_path=CHECKPOINT_PATH, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
