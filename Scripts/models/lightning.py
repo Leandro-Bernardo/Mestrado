@@ -40,6 +40,9 @@ class DataModule(LightningDataModule):
         descriptors = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_{stage}.bin"), shared = True, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32)).view(total_samples * image_size, descriptor_depth)
         expected_value = FloatTensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_anotation_{stage}.bin"), shared = True, nbytes= (total_samples * image_size) * nbytes_float32)).view(total_samples * image_size)
 
+        #descriptors = torch.tensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_{stage}.bin"), shared = True, nbytes= (total_samples * image_size * descriptor_depth) * nbytes_float32), device= 'cuda').view(total_samples * image_size, descriptor_depth)
+        #expected_value = torch.tensor(UntypedStorage.from_file(os.path.join(self.descriptor_root, f"descriptors_anotation_{stage}.bin"), shared = True, nbytes= (total_samples * image_size) * nbytes_float32), device= 'cuda').view(total_samples * image_size)
+
         return TensorDataset(descriptors, expected_value)
 
     def setup(self, stage: str) -> None:  # all the same because the dataset is splited and saved in disk

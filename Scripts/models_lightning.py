@@ -83,7 +83,7 @@ def main():
     checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename=f"{MODEL_VERSION}({CNN_BLOCKS}_blocks)", save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
 
     # load data module
-    data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, batch_size= BATCH_SIZE, num_workers=2)
+    data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, batch_size= BATCH_SIZE, num_workers=6)
 
     if USE_CHECKPOINT:
         model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=LR,  learning_rate_patience=10, checkpoint_path=CHECKPOINT_PATH, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = None)

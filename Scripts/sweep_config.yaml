@@ -9,8 +9,6 @@ metric:
   name: MAPE/Val/Epoch
   goal: minimize
 parameters:
-  batch_size:
-    value: 1000
   lr:
     max: 0.0001
     min: 0.0000000000001

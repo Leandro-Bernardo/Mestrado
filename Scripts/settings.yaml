@@ -3,7 +3,7 @@ skip_blank: false
 process_blank_files_separatedly: false
 image_size: 448
 feature_extractor: resnet50
-cnn_blocks: 2
+cnn_blocks: 3
 network_model: zero_dawn
 chosen_model: "best_model_2blocks_resnet50_img_size_448" #"best_model_2blocks_resnet50"
 use_checkpoint: false
@@ -32,9 +32,9 @@ feature_extraction:
       cnn1_output_shape        : null
     Chloride  :
       feature_list:
-        [relu, layer1.2.relu_2, layer2.3.relu_2] # , layer3.5.relu_2] #, layer4.2.relu_2]
+        [relu, layer1.2.relu_2 , layer2.3.relu_2] #, layer3.5.relu_2] #, layer4.2.relu_2]
       receptive_field_dim: 0
-      descriptor_depth   :  320 #832 #320 #1856 #320 #832 # 3904
+      descriptor_depth   :  832 #320 #1856 #320 #832 # 3904
       cnn1_output_shape   : 224 #112
 
 models:
@@ -44,7 +44,7 @@ models:
   gradient_clipping: 0.5
   loss_function: mean_squared_error
   optimizer: sgd
-  batch_size: 1000
+  batch_size: 500
   batch_normalization: true
 
 statistical_analysis:

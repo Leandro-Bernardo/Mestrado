@@ -45,7 +45,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     EARLY_STOP_PATIENCE = 2*LR_PATIENCE + 1
     LOSS_FUNCTION = settings["models"]["loss_function"]
     GRADIENT_CLIPPING = settings["models"]["gradient_clipping"]
-    BATCH_SIZE = 1000 #settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]**2   # uses all the descriptors from an single image as a batch
+    BATCH_SIZE = settings["models"]["batch_size"]
     # data variables
     DESCRIPTOR_DEPTH = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["descriptor_depth"]
 
@@ -110,13 +110,13 @@ def main():
         # checkpoint callback setting
         checkpoint_callback = ModelCheckpoint(dirpath=CHECKPOINT_ROOT, filename= run.name, save_top_k=1, monitor='Loss/Val', mode='min', enable_version_counter=False, save_last=False, save_weights_only=True)#every_n_epochs=CHECKPOINT_SAVE_INTERVAL)
         # load data module
-        data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, batch_size= configs["batch_size"], num_workers=2 )
+        data_module = DataModule(descriptor_root=DESCRIPTORS_ROOT, batch_size= BATCH_SIZE, num_workers=6 )
 
         if USE_CHECKPOINT:
-            model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"],  learning_rate_patience=LR_PATIENCE, checkpoint_path=CHECKPOINT_PATH, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
+            model = BaseModel.load_from_checkpoint(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=configs["lr"],  learning_rate_patience=LR_PATIENCE, checkpoint_path=CHECKPOINT_PATH, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
 
         else:
-            model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=configs["batch_size"], learning_rate=configs["lr"], learning_rate_patience=LR_PATIENCE, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
+            model = BaseModel(dataset=data_module, model=MODEL_NETWORK, loss_function=LOSS_FUNCTION, batch_size=BATCH_SIZE, learning_rate=configs["lr"], learning_rate_patience=LR_PATIENCE, descriptor_depth = DESCRIPTOR_DEPTH, sweep_config = configs)
 
         # train the model
         trainer = Trainer(
