@@ -44,7 +44,7 @@ models:
   gradient_clipping: 0.5
   loss_function: mean_squared_error
   optimizer: sgd
-  batch_size: 500
+  batch_size: 250
   batch_normalization: true
 
 statistical_analysis:
