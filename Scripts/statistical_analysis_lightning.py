@@ -233,7 +233,7 @@ class Statistics():
 
         self.mean = torch.mean(self.sample_predictions_vector).item()
         self.median = torch.median(self.sample_predictions_vector).item()
-        self.mode = scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
+        self.mode = torch.mode(self.sample_predictions_vector.flatten())[0].item()#scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
         self.variance = torch.var(self.sample_predictions_vector).item()
         self.std = torch.std(self.sample_predictions_vector).item()
         self.mad = scipy.stats.median_abs_deviation(np.array(sample_predictions_vector).flatten())
