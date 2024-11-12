@@ -66,7 +66,7 @@ PMF_MODEL_PATH = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALY
 SAMPLES_ROOT = os.path.join(os.path.dirname(__file__), "..", f"{IMAGES_TO_EVALUATE}_samples")
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
-# Descriptor based model setup
+## Descriptor based model setup ##
 networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                   "model_2": alkalinity.Model_2()},
                     "Chloride": {"model_1": chloride.Model_1(),
@@ -81,7 +81,7 @@ MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
 LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
 
-# PMF based model setup
+## PMF based model setup ##
 dataset_processor = {"Alkalinity":{"dataset": AlkalinitySampleDataset, "processed_dataset": ProcessedAlkalinitySampleDataset},
                      "Chloride": {"dataset": ChlorideSampleDataset, "processed_dataset": ProcessedChlorideSampleDataset},
                      #"Sulfate": {"dataset": SulfateSampleDataset, "processed_dataset": ProcessedSulfateSampleDataset},
@@ -158,6 +158,7 @@ os.makedirs(SAVE_EXCEL_PATH, exist_ok=True)
 ### DESCRIPTOR BASED MODEL FUNCTIONS ###
 # loads datasets for  evaluation
 def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_ROOT):
+        # loads metadata
         with open(os.path.join(descriptor_root, f'metadata_{dataset_for_inference}.json'), "r") as file:
             metadata = json.load(file)
         total_samples = metadata['total_samples']
@@ -173,7 +174,7 @@ def load_dataset(dataset_for_inference: str, descriptor_root: str = DESCRIPTORS_
 
         return TensorDataset(descriptors.to("cuda"), expected_value.to("cuda"))
 
-# fix the state dict keys and loads it
+# if needed, fixs the state dict keys and loads it
 def load_state_dict(model: torch.nn.Module, checkpoint_state_dict: Dict ):
     checkpoint_state_dict = dict(checkpoint_state_dict.items())
     if "model.in_layer" in checkpoint_state_dict.keys():
@@ -199,6 +200,7 @@ def evaluate(
     expected_value = []
     #total_samples = len(eval_loader)
 
+    #evaluation step
     with torch.no_grad():
         for X_batch, y_batch in eval_loader:
 
@@ -220,7 +222,7 @@ def evaluate(
 
     return partial_loss, predicted_value, expected_value # ,accuracy
 
-
+# gets samples informations (datetime, analyst_name, sample_prefix, blank_filename)
 def get_sample_identity(sample, identity_path):
     information = []
     with open(os.path.join(identity_path, f"{sample}_identity.txt")) as f:
@@ -229,11 +231,12 @@ def get_sample_identity(sample, identity_path):
     datetime, analyst_name, sample_prefix, blank_filename = information[0], information[1], information[2], information[3]
     return datetime.strip("\n").strip('"'), analyst_name.strip("\n").strip('"'), sample_prefix.strip("\n").strip('"'), blank_filename.strip("\n").strip('"')
 
+# calculates some statistics
 class Statistics():
 
-    def __init__(self, sample_predictions_vector, sample_expected_value):
+    def __init__(self, sample_predictions_vector: List, sample_expected_value_vector: List):
         self.sample_predictions_vector = torch.tensor(sample_predictions_vector, dtype=torch.float32)
-        self.sample_expected_value = torch.tensor(sample_expected_value, dtype=torch.float32)
+        self.sample_expected_value_vector = torch.tensor(sample_expected_value_vector, dtype=torch.float32)
 
         self.mean = torch.mean(self.sample_predictions_vector).item()
         self.median = torch.median(self.sample_predictions_vector).item()
@@ -243,15 +246,18 @@ class Statistics():
         self.mad = scipy.stats.median_abs_deviation(np.array(sample_predictions_vector).flatten())
         self.min_value = torch.min(self.sample_predictions_vector).item()
         self.max_value = torch.max(self.sample_predictions_vector).item()
-        self.absolute_error = torch.absolute(self.sample_predictions_vector - self.sample_expected_value)
-        self.relative_error = (self.absolute_error/self.sample_expected_value)*100
+        self.absolute_error = torch.absolute(self.sample_predictions_vector - self.sample_expected_value_vector)
+        self.relative_error = (self.absolute_error/self.sample_expected_value_vector)*100
         self.mae = torch.mean(self.absolute_error).item()
         self.mpe = torch.mean(self.relative_error).item()
         self.std_mae = torch.std(self.absolute_error).item()
         self.std_mpe = torch.std(self.relative_error).item()
+        self.relative_error_mean = (torch.absolute(self.mean - self.sample_expected_value_vector[0])/sample_expected_value_vector[0]).item()*100
+        self.relative_error_median = (torch.absolute(self.median - self.sample_expected_value_vector[0])/sample_expected_value_vector[0]).item()*100
+        self.relative_error_mode = (torch.absolute(self.mode - self.sample_expected_value_vector[0])/sample_expected_value_vector[0]).item()*100
 
 
-# Loads model configs
+# Loads model checkpoint
 model = MODEL_NETWORK
 #optimizer = torch.optim.SGD(params=model.parameters(), lr=LR)
 checkpoint = torch.load(CHECKPOINT_PATH)
@@ -266,34 +272,35 @@ def main(dataset_for_inference: str):
     dataset = load_dataset(dataset_for_inference)
     len_total_samples = int(len(os.listdir(os.path.join(ORIGINAL_IMAGE_ROOT)))/3) #TODO alterar isso para abrir a partir do json de metadados
 
-    #pmf based model preprocessing
-    samples = SampleDataset(
-        base_dirs = SAMPLES_ROOT,
-        progress_bar = True,
-        skip_blank_samples = SKIP_BLANK,
-        skip_incomplete_samples = True,
-        skip_inference_sample= True,
-        skip_training_sample = False,
-        verbose = True
-    )
+    ## DISABLED ##
+    # #pmf based model preprocessing
+    # samples = SampleDataset(
+    #     base_dirs = SAMPLES_ROOT,
+    #     progress_bar = True,
+    #     skip_blank_samples = SKIP_BLANK,
+    #     skip_incomplete_samples = True,
+    #     skip_inference_sample= True,
+    #     skip_training_sample = False,
+    #     verbose = True
+    # )
 
-    if ANALYTE == "Alkalinity":
-        processed_samples = ProcessedSampleDataset(
-        dataset = samples,
-        cache_dir = CACHE_PATH,
-        num_augmented_samples = 0,
-        progress_bar = True,
-        transform = None, )
+    # if ANALYTE == "Alkalinity":
+    #     processed_samples = ProcessedSampleDataset(
+    #     dataset = samples,
+    #     cache_dir = CACHE_PATH,
+    #     num_augmented_samples = 0,
+    #     progress_bar = True,
+    #     transform = None, )
 
-    elif ANALYTE == "Chloride":
-        processed_samples = ProcessedSampleDataset(
-            dataset = samples,
-            cache_dir = CACHE_PATH,
-            num_augmented_samples = 0,
-            progress_bar = True,
-            transform = None,
-            lab_mean= pca_stats[f"{ANALYTE}"]['lab_mean'],
-            lab_sorted_eigenvectors = pca_stats[f"{ANALYTE}"]['lab_sorted_eigenvectors'])
+    # elif ANALYTE == "Chloride":
+    #     processed_samples = ProcessedSampleDataset(
+    #         dataset = samples,
+    #         cache_dir = CACHE_PATH,
+    #         num_augmented_samples = 0,
+    #         progress_bar = True,
+    #         transform = None,
+    #         lab_mean= pca_stats[f"{ANALYTE}"]['lab_mean'],
+    #         lab_sorted_eigenvectors = pca_stats[f"{ANALYTE}"]['lab_sorted_eigenvectors'])
 
     print("Descriptor based model. Evaluation time")
     partial_loss, predicted_value, expected_value = evaluate(model=model, eval_loader=dataset)
@@ -341,15 +348,18 @@ def main(dataset_for_inference: str):
                                             "mean": stats.mean,
                                             "median": stats.median,
                                             "mode": stats.mode,
+                                            "min": stats.min_value,
+                                            "max": stats.max_value,
                                             "variance": stats.variance,
                                             "std": stats.std,
                                             "mad": stats.mad,
-                                            "min": stats.min_value,
-                                            "max": stats.max_value,
                                             #"mean absolute error": stats.mae,
                                             #"mean relative error": stats.mpe,
                                             #"std mean absolute error": stats.std_mae,
                                             #"std mean relative error": stats.std_mpe,
+                                            "relative error (mean)": stats.relative_error_mean,
+                                            "relative error (median)": stats.relative_error_median,
+                                            "relative error (mode)": stats.relative_error_mode,
                                            }
 
 
