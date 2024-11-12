@@ -1,3 +1,4 @@
+import scipy.ndimage
 import torch
 import os
 import numpy as np
@@ -225,6 +226,20 @@ def get_min_max_values(dataset_for_inference):
 
     return min_value, max_value
 
+def smooth_histogram(histogram: np.array, by: str = 'mean', filter_size: int = 3):
+    # smooths a histogram with the concepts of spatial filtering: to apply a filter by convolving the histogram function (f) with a selected function (g)
+    # f * g = Σ f(s) . g(s - t)   # 1D convolution for discrete numbers
+
+    # defines operator for filtering (by)
+    filter_operator = {'mean': 1/np.mean(histogram),
+                      'median': 1/np.median(histogram)}
+    # creates a filter (g function) given filter_size (nx1) and filter_operator
+    filter = [filter_operator[by] for i in range(filter_size)]
+    # convolves g over f
+    smoothed_histogram = scipy.ndimage.convolve1d(histogram, filter)
+
+    return smoothed_histogram
+
 class Statistics():
 
     def __init__(self, sample_predictions_vector, sample_expected_value):
@@ -304,19 +319,30 @@ def main(dataset_for_inference):
 
     for i in range(len_mode):
         values = np.array(predicted_value_for_samples[f'sample_{i}']).flatten() #flattens for histogram calculation
+        # calculates statistics
         stats = Statistics(predicted_value_for_samples[f'sample_{i}'], expected_value_from_samples[f'sample_{i}'])
+
+        # define number of bins
+        bins = int(math.ceil(max_value/(EXPECTED_RANGE[ANALYTE][0]*0.1/2))) #valor maximo do analito / (metade do pior erro relativo * (10% do menor valor esperado))
+
+        # calculate histogram
+        histogram, bins_ranges = np.histogram(a = values, bins = bins, range = (min_value, max_value))
+
+        # smooths histogram with a filter (by) with size n x 1
+        corrected_histogram = smooth_histogram(histogram = histogram, by = 'mean', filter_size = 3)
+
+        # generates matplotlib figure and add a histogram
         plt.figure(figsize=(15, 8))
-
-        #counts, bins = np.unique(values, return_counts = True)
-        bins = int(math.ceil(max_value/(EXPECTED_RANGE[ANALYTE][0]*0.1/2))) #valor maximo do analito / metade do pior erro relativo (10% do menor valor esperado)
-        plt.hist(values, bins = bins, range = (min_value, max_value), color='black')
-
+        #plt.hist(values = histogram, edges = bins_ranges, range = (min_value, max_value), color='black')
+        plt.stairs(values = corrected_histogram, edges = bins_ranges, fill=True, color='black')
+        #plt.bar(x = bins_ranges[0:-1], height  = histogram , color='black')
         # adds vertical lines for basic statistic values
         plt.axvline(x = stats.mean, alpha = 0.5, c = 'red')
         plt.axvline(x = stats.median, alpha = 0.5, c = 'blue')
-        #plt.axvline(x = stats.mode, alpha = 0.5, c = 'green')
+        plt.axvline(x = stats.mode, alpha = 0.5, c = 'green')
+        plt.axvline(x = expected_value_from_samples[f'sample_{i}'][0][0], alpha = 0.5, c = 'grey')
 
-        plt.title(f"Sample_{i }, Expected Value: {round(expected_value_from_samples[f'sample_{i}'][0][0], 2)}")
+        plt.title(f"Sample_{i}, Expected Value: {round(expected_value_from_samples[f'sample_{i}'][0][0], 2)}")
         plt.xlabel('Prediction')
         plt.ylabel('Count')
 
@@ -337,25 +363,29 @@ def main(dataset_for_inference):
         if ANALYTE == "Chloride":
             text = 10000
             text_median = 12000
-        #text settings
+
+        ##text settings##
+        # expected value
+        plt.text(x = x_max+0.5,  y=y_max - 9.92 * scale_factor,
+                s = f" value:")
+        plt.text(x = x_max + text, y=y_max - 9.92 * scale_factor,
+                s = f" {expected_value_from_samples[f'sample_{i}'][0][0]:.2f}", c = 'grey', alpha = 0.6)
+        # mean
         plt.text(x = x_max+0.5,  y=y_max - 10.20 * scale_factor,
                 s = f" mean:")
-
         plt.text(x = x_max + text, y=y_max - 10.20 * scale_factor,
                 s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
-
+        # median
         plt.text(x = x_max ,  y=y_max - 10.49 * scale_factor,
                 s = f" median:" )
-
         plt.text(x = x_max + text_median, y=y_max - 10.49 * scale_factor,
                 s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
-
+        # mode
         plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
                 s = f" mode:" )
-
         plt.text(x = x_max + text,  y=y_max - 10.78 * scale_factor,
-                s = f" {stats.mode:.2f}", c = 'black', alpha = 0.6)
-
+                s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
+        # stats
         plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
                 s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}", c = 'black')
 
