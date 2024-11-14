@@ -330,7 +330,7 @@ def main(dataset_for_inference):
         histogram, bins_ranges = np.histogram(a = values, bins = bins, range = (min_value, max_value))
 
         # smooths histogram with a filter (by) with size n x 1
-        corrected_histogram = smooth_histogram(histogram = histogram, by = 'mean', filter_size = 3)
+        corrected_histogram = histogram #smooth_histogram(histogram = histogram, by = 'mean', filter_size = 3)
 
         # generates matplotlib figure and add a histogram
         plt.figure(figsize=(15, 8))

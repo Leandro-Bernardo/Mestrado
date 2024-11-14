@@ -5,7 +5,7 @@ image_size: 448
 feature_extractor: resnet50
 cnn_blocks: 3
 network_model: zero_dawn
-chosen_model: "best_model_2blocks_resnet50_img_size_448" #"best_model_2blocks_resnet50"
+chosen_model: "best_model_3blocks_resnet50_img_size_448" #"best_model_2blocks_resnet50"
 use_checkpoint: false
 sweep_id: false
 
@@ -44,7 +44,7 @@ models:
   gradient_clipping: 0.5
   loss_function: mean_squared_error
   optimizer: sgd
-  batch_size: 250
+  batch_size: 150
   batch_normalization: true
 
 statistical_analysis:
