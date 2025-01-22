@@ -31,17 +31,19 @@ class Wasserstein(pl.LightningModule):
             and finite. If unspecified, each value is assigned the same weight.
 
     Returns:
-        distance : float
+        distance : torch.tensor
             The computed distance between the distributions.
     """
-    def __init__(self, u_values: torch.Tensor, v_values: torch.Tensor, u_weights: Optional[torch.Tensor] = None, v_weights: Optional[torch.Tensor] = None, p: int = 1):
+    def __init__(self, u_values: torch.Tensor = None, v_values: torch.Tensor = None, u_weights: Optional[torch.Tensor] = None, v_weights: Optional[torch.Tensor] = None, p: int = 1):
         super().__init__()
-        self.u_values = u_values
-        self.v_values = v_values
-        self.u_weights = u_weights
-        self.v_weights = v_weights
-        self.p = p
+        # self.u_values = u_values
+        # self.v_values = v_values
+        # self.u_weights = u_weights
+        # self.v_weights = v_weights
+        # self.p = p
 
+        #assert self.u_values != None, "u_values must be provided"
+        #assert self.v_values != None, "v_values must be provided"
     # def forward(self):
     #     p_sorted = torch.sort(self.p_distribution, dim=0)[0]
     #     q_sorted = torch.sort(self.q_distribution, dim=0)[0]
@@ -52,30 +54,31 @@ class Wasserstein(pl.LightningModule):
     #     #y = torch.cumsum(x, dim=0)
     #     return p_CDF#torch.abs(elementwise_CDF_distances).sum()
 
-    def forward(self):
-        u_sorter = torch.argsort(self.u_values)
-        v_sorter = torch.argsort(self.v_values)
+    def forward(self, u_values: torch.Tensor, v_values: torch.Tensor, u_weights: Optional[torch.Tensor] = None, v_weights: Optional[torch.Tensor] = None, p: int =1):
+        u_sorter = torch.argsort(u_values)
+        v_sorter = torch.argsort(v_values)
 
-        all_values = torch.cat((self.u_values, self.v_values)).sort().values
+        all_values = torch.cat((u_values, v_values)).sort().values
         deltas = torch.diff(all_values)
 
-        u_cdf_indices = torch.searchsorted(self.u_values[u_sorter], all_values[:-1], right=True)
-        v_cdf_indices = torch.searchsorted(self.v_values[v_sorter], all_values[:-1], right=True)
+        u_cdf_indices = torch.searchsorted(u_values[u_sorter], all_values[:-1], right=True)
+        v_cdf_indices = torch.searchsorted(v_values[v_sorter], all_values[:-1], right=True)
 
-        if self.u_weights is None:
-            u_cdf = u_cdf_indices.float() / self.u_values.size(0)
+        if u_weights is None:
+            u_cdf = u_cdf_indices.float() / u_values.size(0)
         else:
-            u_sorted_cumweights = torch.cat((torch.tensor([0.0]), torch.cumsum(self.u_weights[u_sorter], 0)))
+            u_sorted_cumweights = torch.cat((torch.tensor([0.0]), torch.cumsum(u_weights[u_sorter], 0)))
             u_cdf = u_sorted_cumweights[u_cdf_indices] / u_sorted_cumweights[-1]
 
-        if self.v_weights is None:
-            v_cdf = v_cdf_indices.float() / self.v_values.size(0)
+        if v_weights is None:
+            v_cdf = v_cdf_indices.float() / v_values.size(0)
         else:
-            v_sorted_cumweights = torch.cat((torch.tensor([0.0]), torch.cumsum(self.v_weights[v_sorter], 0)))
+            v_sorted_cumweights = torch.cat((torch.tensor([0.0]), torch.cumsum(v_weights[v_sorter], 0)))
             v_cdf = v_sorted_cumweights[v_cdf_indices] / v_sorted_cumweights[-1]
 
+        wasserstein_distance = torch.pow(torch.sum(torch.pow(torch.abs(u_cdf - v_cdf), p) * deltas), 1/p)
 
-        return torch.pow(torch.sum(torch.pow(torch.abs(u_cdf - v_cdf), self.p) * deltas), 1/self.p).item()
+        return wasserstein_distance.requires_grad_(True) # returns a tensor with gradient tracking enabled
 
 """
 x = p - q
