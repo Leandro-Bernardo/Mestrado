@@ -16,10 +16,10 @@ class AnalyteClasses(NamedTuple):
 
 
 # Default values for Weights & Biases arguments.
-DEFAULT_WANDB_ENTITY_NAME: Final[str] = "prograf-uff"
-DEFAULT_WANDB_PROJECT_NAME_MASK: Final[str] = "chemical-analysis-{analyte:s}"
-DEFAULT_WANDB_SWEEP_ID: Final[Optional[str]] = "zmxbqn69"
-DEFAULT_WANDB_SWEEP_NAME: Final[Optional[str]] = "exp_ROI_RADIUS(GH_2.5,PER_2.5,PIR_2.25)" if DEFAULT_WANDB_SWEEP_ID is None else None
+DEFAULT_WANDB_ENTITY_NAME: Final[str] = "uff-and-prograf"
+DEFAULT_WANDB_PROJECT_NAME_MASK: Final[str] = "Chloride-reinjecao"
+DEFAULT_WANDB_SWEEP_ID: Final[Optional[str]] = None
+DEFAULT_WANDB_SWEEP_NAME: Final[Optional[str]] = "new sweep" if DEFAULT_WANDB_SWEEP_ID is None else None
 DEFAULT_WANDB_MODE: Final[str] = WandbMode.ONLINE # After offline training is necessary make the upload using 'wandb sync --include-offline .\wandb\offline-*'
 
 # Default values for network model arguments.
@@ -35,71 +35,100 @@ NETWORK_CHOICES: Dict[str, AnalyteClasses] = {
     **{name: AnalyteClasses(analyte=AnalyteName.PH,         expected_range=(5.0, 9.0),          network_class=obj, sample_dataset_class=ph.PhSampleDataset,                 processed_sample_dataset_class=ph.ProcessedPhSampleDataset)  for name, obj in inspect.getmembers(ph) if inspect.isclass(obj) and issubclass(obj, ph.PhNetwork) and obj != ph.PhNetwork},
 }
 
-DEFAULT_NETWORK_CLASS: Final[Type[Network]] = iron_oxid.IronOxidNetworkSqueezeNetStyle
+DEFAULT_NETWORK_CLASS: Final[Type[Network]] = chloride.ChlorideNetworkSqueezeNetStyle
 
 # Default values for Dist2Dist usage
 DEFAULT_DIST2DIST_USAGE = False
 
 # Default values for dataset arguments.
-DATASET_ROOT: Final[str] = os.path.join(os.path.dirname(__file__), "..", "..")
+DATASET_ROOT: Final[str] = os.path.join(os.path.dirname(__file__), "..", "splited_samples")
 
-DEFAULT_FIT_SAMPLES_BASE_DIRS: Final[Dict[str, List[str]]] = {
+DEFAULT_TRAIN_FIT_SAMPLES_BASE_DIRS: Final[Dict[str, List[str]]] = {
     AnalyteName.ALKALINITY: [
       os.path.join(DATASET_ROOT, "MABIDs-Dataset-Alkalinity", "CR11", "train"),
     ],
     AnalyteName.CHLORIDE: [
-      os.path.join(DATASET_ROOT, "MABIDs-Dataset-Chloride", "train"),
+      os.path.join(DATASET_ROOT, "Chloride", "train_samples"),
     ],
-    AnalyteName.PHOSPHATE: [
-         os.path.join(DATASET_ROOT, "MABIDs-Dataset-Phosphate", "train")
+    # AnalyteName.PHOSPHATE: [
+    #      os.path.join(DATASET_ROOT, "MABIDs-Dataset-Phosphate", "train")
+    # ],
+    # AnalyteName.SULFATE: [
+    #   os.path.join(DATASET_ROOT, "MABIDs-Dataset-Sulfate", "train"),
+    # ],
+    # AnalyteName.IRON_OXID: [
+    #    os.path.join(DATASET_ROOT, "MABIDs-Dataset-IronOxid", "train")
+    # ],
+    # AnalyteName.IRON2: [ # TODO remover após testes
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron2")
+    # ],
+    # AnalyteName.IRON3: [ # TODO remover após testes
+    #    os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron3", "train")
+    # ],
+    # AnalyteName.BISULFITE: [
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-Bisulfite", "train(sem amostras do CENPS)")
+    # ],
+    # AnalyteName.PH: [
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-pH", "train")
+    # ],
+}
+DEFAULT_VAL_FIT_SAMPLES_BASE_DIRS: Final[Dict[str, List[str]]] = {
+    AnalyteName.ALKALINITY: [
+      os.path.join(DATASET_ROOT, "MABIDs-Dataset-Alkalinity", "CR11", "train"),
     ],
-    AnalyteName.SULFATE: [
-      os.path.join(DATASET_ROOT, "MABIDs-Dataset-Sulfate", "train"),
+    AnalyteName.CHLORIDE: [
+      os.path.join(DATASET_ROOT, "Chloride","val_samples"),
     ],
-    AnalyteName.IRON_OXID: [
-       os.path.join(DATASET_ROOT, "MABIDs-Dataset-IronOxid", "train")
-    ],
-    AnalyteName.IRON2: [ # TODO remover após testes
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron2")
-    ],
-    AnalyteName.IRON3: [ # TODO remover após testes
-       os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron3", "train")
-    ],
-    AnalyteName.BISULFITE: [
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-Bisulfite", "train(sem amostras do CENPS)")
-    ],
-    AnalyteName.PH: [
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-pH", "train")
-    ],
+    # AnalyteName.PHOSPHATE: [
+    #      os.path.join(DATASET_ROOT, "MABIDs-Dataset-Phosphate", "train")
+    # ],
+    # AnalyteName.SULFATE: [
+    #   os.path.join(DATASET_ROOT, "MABIDs-Dataset-Sulfate", "train"),
+    # ],
+    # AnalyteName.IRON_OXID: [
+    #    os.path.join(DATASET_ROOT, "MABIDs-Dataset-IronOxid", "train")
+    # ],
+    # AnalyteName.IRON2: [ # TODO remover após testes
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron2")
+    # ],
+    # AnalyteName.IRON3: [ # TODO remover após testes
+    #    os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron3", "train")
+    # ],
+    # AnalyteName.BISULFITE: [
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-Bisulfite", "train(sem amostras do CENPS)")
+    # ],
+    # AnalyteName.PH: [
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-pH", "train")
+    # ],
 }
 DEFAULT_TEST_SAMPLES_BASE_DIRS: Final[Dict[str, List[str]]] = {
     AnalyteName.ALKALINITY: [
       os.path.join(DATASET_ROOT, "MABIDs-Dataset-Alkalinity", "CR11", "test"),
     ],
     AnalyteName.CHLORIDE: [
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-Chloride", "test"),
+        os.path.join(DATASET_ROOT, "Chloride","test_samples"),
     ],
-    AnalyteName.PHOSPHATE: [
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-Phosphate", "test"),
-    ],
-    AnalyteName.SULFATE: [
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-Sulfate", "test")
-    ],
-    AnalyteName.IRON_OXID: [
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-IronOxid", "test")
-    ],
-    AnalyteName.IRON2: [ # TODO remover após testes
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron2", "test")
-    ],
-    AnalyteName.IRON3: [ # TODO remover após testes
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron3", "test")
-    ],
-    AnalyteName.BISULFITE: [
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-Bisulfite", "test")
-    ],
-    AnalyteName.PH: [
-        os.path.join(DATASET_ROOT, "MABIDs-Dataset-pH", "test")
-    ],
+    # AnalyteName.PHOSPHATE: [
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-Phosphate", "test"),
+    # ],
+    # AnalyteName.SULFATE: [
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-Sulfate", "test")
+    # ],
+    # AnalyteName.IRON_OXID: [
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-IronOxid", "test")
+    # ],
+    # AnalyteName.IRON2: [ # TODO remover após testes
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron2", "test")
+    # ],
+    # AnalyteName.IRON3: [ # TODO remover após testes
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-Iron3", "test")
+    # ],
+    # AnalyteName.BISULFITE: [
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-Bisulfite", "test")
+    # ],
+    # AnalyteName.PH: [
+    #     os.path.join(DATASET_ROOT, "MABIDs-Dataset-pH", "test")
+    # ],
 }
 DEFAULT_USE_EXPANDED_SET: Final[bool] = False
 DEFAULT_NUM_AUGMENTED_SAMPLES: Final[int] = 0
@@ -187,7 +216,9 @@ def main(args: Namespace) -> None:
             seed=args.seed,
             # Dataset arguments.
             dataset_root_dir=args.dataset_root_dir,
-            fit_samples_base_dirs=args.fit_samples_base_dirs,
+            #fit_samples_base_dirs=args.fit_samples_base_dirs,
+            fit_train_samples_base_dirs=args.fit_train_samples_base_dirs,
+            fit_val_samples_base_dirs=args.fit_val_samples_base_dirs,
             num_augmented_samples=args.num_augmented_samples,
             processed_sample_dataset_class=args.net.processed_sample_dataset_class,
             reduction_level=args.reduction_level,
@@ -215,7 +246,9 @@ if __name__ == "__main__":
     group.add_argument("--net", type=str, choices=sorted(NETWORK_CHOICES.keys()), default=DEFAULT_NETWORK_CLASS.__name__, help="the name of the class of the network model to be trained")
     # Dataset arguments.
     group = parser.add_argument_group("dataset arguments")
-    group.add_argument("--fit_samples_base_dirs", metavar="PATHS", nargs="+", default=[], help="list of paths to folders with fit samples")
+    #group.add_argument("--fit_samples_base_dirs", metavar="PATHS", nargs="+", default=[], help="list of paths to folders with fit samples")
+    group.add_argument("--fit_train_samples_base_dirs", metavar="PATHS", nargs="+", default=[], help="list of paths to folders with fit samples")
+    group.add_argument("--fit_val_samples_base_dirs", metavar="PATHS", nargs="+", default=[], help="list of paths to folders with fit samples")
     group.add_argument("--test_samples_base_dirs", metavar="PATHS", nargs="+", default=[], help="list of paths to folders with fit samples")
     group.add_argument("--dataset_root_dir", metavar="PATH", type=str, help="path to the root dir where the dataset will be creates")
     switch = group.add_mutually_exclusive_group()
@@ -240,8 +273,10 @@ if __name__ == "__main__":
     args.net = NETWORK_CHOICES[args.net]
     if args.wandb_project is None:
         args.wandb_project = DEFAULT_WANDB_PROJECT_NAME_MASK.format(analyte=args.net.analyte)
-    if len(args.fit_samples_base_dirs) == 0:
-        args.fit_samples_base_dirs = DEFAULT_FIT_SAMPLES_BASE_DIRS[args.net.analyte]
+    if len(args.fit_train_samples_base_dirs) == 0:
+        args.fit_train_samples_base_dirs = DEFAULT_TRAIN_FIT_SAMPLES_BASE_DIRS[args.net.analyte]
+    if len(args.fit_val_samples_base_dirs) == 0:
+        args.fit_val_samples_base_dirs = DEFAULT_VAL_FIT_SAMPLES_BASE_DIRS[args.net.analyte]
     if len(args.test_samples_base_dirs) == 0:
         args.test_samples_base_dirs = DEFAULT_TEST_SAMPLES_BASE_DIRS[args.net.analyte]
     if args.dataset_root_dir is None:

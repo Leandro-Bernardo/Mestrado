@@ -72,12 +72,14 @@ def data_checkpoint(root_dir: str, label: str):
 
 
 class DataModule(LightningDataModule):
-    def __init__(self, *, batch_size: int, dataset_root_dir: str, fit_samples_base_dirs: Iterable[str], num_augmented_samples: int, sample_dataset_class: Type[SampleDataset], processed_sample_dataset_class: Type[ProcessedSampleDataset], reduction_level: float, test_samples_base_dirs: Iterable[str], use_expanded_set: bool, use_artificial_data: bool, val_proportion: float, **_: Any) -> None:
+    def __init__(self, *, batch_size: int, dataset_root_dir: str, fit_train_samples_base_dirs: Iterable[str], fit_val_samples_base_dirs: Iterable[str] , num_augmented_samples: int, sample_dataset_class: Type[SampleDataset], processed_sample_dataset_class: Type[ProcessedSampleDataset], reduction_level: float, test_samples_base_dirs: Iterable[str], use_expanded_set: bool, use_artificial_data: bool, val_proportion: float, **_: Any) -> None:
         super().__init__()
         # Keep the input arguments.
         self.batch_size = batch_size
         self.dataset_root_dir = dataset_root_dir
-        self.fit_samples_base_dirs = fit_samples_base_dirs
+        #self.fit_samples_base_dirs = fit_samples_base_dirs
+        self.fit_train_samples_base_dirs = fit_train_samples_base_dirs
+        self.fit_val_samples_base_dirs = fit_val_samples_base_dirs
         self.num_augmented_samples = num_augmented_samples
         self.processed_sample_dataset_class = processed_sample_dataset_class
         self.reduction_level = reduction_level
@@ -156,10 +158,15 @@ class DataModule(LightningDataModule):
                     artifact.wait()
                 except:
                     # If the artifact does not exist them make the train, validation, and test subsets of processed samples...
-                    fit_dataset = self.sample_dataset_class(self.fit_samples_base_dirs, skip_blank_samples=True, skip_incomplete_samples=True, skip_inference_sample=True, skip_training_sample=False)
-                    num_val = int(len(fit_dataset) * self.val_proportion)
-                    num_train = len(fit_dataset) - num_val
-                    train_subset, val_subset = random_split(fit_dataset, [num_train, num_val])
+                    #fit_dataset = self.sample_dataset_class(self.fit_samples_base_dirs, skip_blank_samples=True, skip_incomplete_samples=True, skip_inference_sample=True, skip_training_sample=False)
+                    #num_val = int(len(fit_dataset) * self.val_proportion)
+                    #num_train = len(fit_dataset) - num_val
+                    #train_subset, val_subset = random_split(fit_dataset, [num_train, num_val])
+
+                    fit_train_dataset = self.sample_dataset_class(self.fit_train_samples_base_dirs, skip_blank_samples=True, skip_incomplete_samples=True, skip_inference_sample=True, skip_training_sample=False)
+                    fit_val_dataset = self.sample_dataset_class(self.fit_val_samples_base_dirs, skip_blank_samples=True, skip_incomplete_samples=True, skip_inference_sample=True, skip_training_sample=False)
+                    train_subset, val_subset = fit_train_dataset, fit_val_dataset
+
                     if self.use_expanded_set:
                         train_subset = ExpandedSampleDataset(train_subset)
                     test_subset = self.sample_dataset_class(self.test_samples_base_dirs, skip_blank_samples=True, skip_incomplete_samples=True, skip_inference_sample=True, skip_training_sample=False)
@@ -288,11 +295,11 @@ class BaseModel(ABC, LightningModule):
 
     def test_step(self, batch: Tuple[CalibratedDistributions, Values], batch_idx: int) -> None:
         self._any_step(batch, "Test")
-        
+
     def on_train_end(self) -> None:
         self.log_last_inferences(mode="Train")
         self.log_last_inferences(mode="Val")
-    
+
     def log_last_inferences(self, mode):
         lower_interval, upper_interval = self.net.expected_range
         predicted_values = self.inf_vs_target[mode][0]["predicted"]
@@ -356,7 +363,7 @@ class BaseModel(ABC, LightningModule):
         fig.add_trace(go.Barpolar(theta=interval_labels, r=qtt_expected_samples_in_intervals, marker_color=px.colors.sequential.Agsunset, showlegend=False), row=1, col=2)
         # fig.update_traces(marker_color=px.colors.sequential.Agsunset)
         wandb.log({f"Relative Percentage Error in Interval/{mode}": fig})
-        
+
     def format_data_for_pie_chart(self, relative_error, data_size: int) -> Tuple[List[Tensor], List[str]]:
         qtt_samples_in_interval = list(map(lambda x: torch.sum(x).item(), relative_error))
         qtt_samples_in_interval = [qtt_samples_in_interval[0]]+list(map(lambda x, y: x-y, qtt_samples_in_interval[1:], qtt_samples_in_interval[:-1]))
