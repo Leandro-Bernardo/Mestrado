@@ -61,7 +61,7 @@ class Wasserstein(pl.LightningModule):
         all_values = torch.cat((u_values, v_values)).sort().values
         deltas = torch.diff(all_values)
 
-        u_cdf_indices = torch.searchsorted(u_values[u_sorter], all_values[:-1], right=True)
+        u_cdf_indices = torch.searchsorted(u_values[u_sorter], all_values[:-1], right=True) # verificar se o auto grad está implementado no searchsorted e no argsorted # talvez nao seja diferenciavel
         v_cdf_indices = torch.searchsorted(v_values[v_sorter], all_values[:-1], right=True)
 
         if u_weights is None:
@@ -81,8 +81,8 @@ class Wasserstein(pl.LightningModule):
         return wasserstein_distance.requires_grad_(True) # returns a tensor with gradient tracking enabled
 
 """
-x = p - q
-y = torch.cumsum(x, dim=0)
+x = p - q   # verificar se sort simples é diferenciavel # PROVAR a conta
+y = torch.cumsum(x, dim=0)  # validar: cumsum(p) - cumsum(q) = cumsum(p-q) # fazer todas as etapas do começo ao fim
 return torch.abs(y).sum()
 """
 
