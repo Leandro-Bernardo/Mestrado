@@ -93,7 +93,7 @@ def check_mutually_exclusive_kwargs(**kwargs: Optional[Any]) -> None:
 
 def compute_calibrated_pmf(blank_pmf: np.ndarray, sample_pmf: np.ndarray) -> np.ndarray:
     # Compute C = A - B, where A is the random variable representing the sample and B is the random variable representing the blank sample
-    return np.abs(scipy.signal.fftconvolve(sample_pmf, np.flip(blank_pmf), mode="same"))
+    return np.maximum(scipy.signal.fftconvolve(sample_pmf, np.flip(blank_pmf), mode="full"), 0.0)  #PAPER Alterei mode de same para full e troquei abs por maximum. Faz mais sentido dessa forma.
 
 
 def _compute_masks_for_cuvette(bgr_img: np.ndarray, lab_img: Optional[np.ndarray])-> Tuple[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray, np.ndarray]:
@@ -129,7 +129,7 @@ def _compute_masks_for_cuvette(bgr_img: np.ndarray, lab_img: Optional[np.ndarray
     grid_bw = np.copy(bright_bw)
     if len(grid_x_top) >= max(LEFT_COLUMN - 1, abs(RIGHT_COLUMN)) and len(grid_x_bottom) >= max(LEFT_COLUMN - 1, abs(RIGHT_COLUMN)):
         # Erase the cuvette's column
-        cv2.drawContours(grid_bw, [np.asarray(((grid_x_top[LEFT_COLUMN], 0), (grid_x_top[RIGHT_COLUMN], 0), (grid_x_bottom[RIGHT_COLUMN], resized_height - 1), (grid_x_bottom[LEFT_COLUMN], resized_height - 1)), dtype=np.int32)], -1, 0, cv2.FILLED) 
+        cv2.drawContours(grid_bw, [np.asarray(((grid_x_top[LEFT_COLUMN], 0), (grid_x_top[RIGHT_COLUMN], 0), (grid_x_bottom[RIGHT_COLUMN], resized_height - 1), (grid_x_bottom[LEFT_COLUMN], resized_height - 1)), dtype=np.int32)], -1, 0, cv2.FILLED)
     grid_msk = grid_bw.astype(np.bool_)
     # Compute the reference L*a*b value for white as the median L*a*b* values among the grid pixels
     lab_white = np.median(resized_lab_img[grid_msk, :], axis=0)  # lab_white.shape = (3,)
@@ -177,9 +177,9 @@ def _compute_masks_for_pot(bgr_img: np.ndarray, lab_img: Optional[np.ndarray], m
         cv2.circle(grid_bw, (x, y), r, 0, -1)
         _, grid_bw = cv2.threshold(grid_bw, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         # Compute the mask for the internal portion of the pot
-        GRID_HOLE_RADIUS = 1.75  # In centimeters
-        POT_EXTERNAL_RADIUS = 1.5  # In centimeters
-        POT_INTERNAL_RADIUS = 1.1  # In centimeters
+        GRID_HOLE_RADIUS = 2.5  # In centimeters
+        POT_EXTERNAL_RADIUS = 2.5  # In centimeters
+        POT_INTERNAL_RADIUS = 2.25  # In centimeters
         pot_bw = np.zeros(shape=(resized_height, resized_width), dtype=np.uint8)
         cv2.circle(pot_bw, (x, y), int(r * (((POT_EXTERNAL_RADIUS + POT_INTERNAL_RADIUS) - GRID_HOLE_RADIUS) / GRID_HOLE_RADIUS)), 255, -1)
         pot_msk = pot_bw.astype(np.bool_)  # pot_msk.shape = (height, width)
@@ -215,7 +215,7 @@ def _compute_masks(bgr_img: np.ndarray, lab_img: Optional[np.ndarray], chamber_t
         return _compute_masks_for_pot(bgr_img, lab_img, min_bright_threshould)
     else:
         raise ValueError(f"Invalid chamber type: {chamber_type}")
-    
+
 
 def correct_predicted_value(value: float, standard_volume: float, used_volume: float) -> float:
     return value * (standard_volume / used_volume)

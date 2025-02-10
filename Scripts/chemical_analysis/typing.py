@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import Enum, unique
 from torch import Tensor
 from typing import Any, List, Optional, Tuple, TypedDict
+import numpy as np
 
 
 class App(TypedDict):
@@ -94,6 +95,7 @@ class Sample(TypedDict):
 
 CalibratedDistribution = Tensor   # Probability mass functions of one calibrated sample; dtype = torch.float32; shape = (height, width) or (size,).
 CalibratedDistributions = Tensor  # Batch of probability mass functions of calibrated samples; dtype = torch.float32; shape = (batch_size, height, width) or (batch_size, size).
+ExtractedFeatures = Tensor        # Batch of extracted features from a calibrated pmf; dtype = torch.float32; shape = (batch_size, height, width) or (batch_size, size)
 Distribution = Tensor             # Probability mass function of one sample; dtype = torch.float32; shape = (height, width) or (size,).
 Distributions = Tensor            # Batch of probability mass functions of samples; dtype = torch.float32; shape = (batch_size, height, width) or (batch_size, size).
 Intervals = Tensor                # Batch of predicted intervals; dtype = torch.float32; shape = (batch_size, 2).
@@ -103,3 +105,38 @@ NormalizedValues = Tensor         # Batch of normalized values in the [0, 1] ran
 Value = Tensor                    # Predicted or expected value of one sample; dtype = torch.float32; shape = (,).
 Values = Tensor                   # Batch of predicted or expected values; dtype = torch.float32; shape = (batch_size,).
 Prediction = Tuple[Values, NormalizedValues]
+
+
+class CachedData(TypedDict):
+    value: float
+    index: int
+    real: bool
+
+class DataBounders(TypedDict):
+    lower: CachedData
+    upper: CachedData
+
+class BoundedAnalyte(TypedDict):
+    target: CachedData
+    bounders: DataBounders
+    interpolation_factor: float
+
+class GroupedBoundedAnalyte(TypedDict):
+    value: float
+    indexes: List[int]
+
+class BoundedAnalyteData(TypedDict):
+    target_value: float
+    target_pmf: np.ndarray
+    lower_pmf: np.ndarray
+    upper_pmf: np.ndarray
+    interpolated_factor: float
+    trans_center: np.ndarray
+    trans_translate: np.ndarray
+    trans_angle: float
+    trans_target: np.ndarray
+
+class GroupedValues(TypedDict):
+    value: Tensor
+    group: int
+    indexes: List[Tensor]

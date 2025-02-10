@@ -6,7 +6,6 @@ from collections.abc import Sized
 from datetime import datetime
 from torch.utils.data import Dataset
 from typing import Any, Callable, Dict, Final, Iterable, List, Optional, Tuple,  TypeVar, Union
-import albumentations
 import copy, json, os, shutil, warnings
 import cv2
 import numpy as np
@@ -17,6 +16,8 @@ DATETIME_FORMAT: Final[str] = "%Y.%m.%d %H:%M:%S %z"
 
 CONCENTRATION_UNIT_FROM_FUNCTION: Final[Dict[str, str]] = {
     "ACID": "MOL_PER_LITER",
+    "BISULFITE": "MILLIGRAM_PER_LITER",
+    "FORMALDEHYDE": "MILLIGRAM_PER_LITER",
     "COSOLVENT": "PERCENT",
     "COMPLEXING": "MOL_PER_LITER",
     "DYE": "MILLIGRAM_PER_LITER",
@@ -25,11 +26,14 @@ CONCENTRATION_UNIT_FROM_FUNCTION: Final[Dict[str, str]] = {
     "MODIFYING": "PERCENT_WEIGHT_VOLUME",
     "PRECIPITANT": "MOL_PER_LITER",
     "REDUCING": "MOL_PER_LITER",
+    "MILLIVOLTS": "MILLIVOLTS"
 }
 
 
 SOLUTION_COMPONENT_FUNCTIONS: Final[Dict[str, str]] = {
     "ACID": "Ácido",
+    "BISULFITE": "Bisulfito",
+    "FORMALDEHYDE": "Folmaldeído",
     "COSOLVENT": "Co-Solvente",
     "COMPLEXING": "Complexante",
     "DYE": "Indicador",
@@ -38,6 +42,8 @@ SOLUTION_COMPONENT_FUNCTIONS: Final[Dict[str, str]] = {
     "MODIFYING": "Modificador",
     "PRECIPITANT": "Precipitante",
     "REDUCING": "Redutor",
+    "MILLIVOLTS": "Millivolt" # CONFIMAR COM LEANDRO SE DEVERIA SER ISSO MESMO
+
 }
 
 
@@ -50,6 +56,16 @@ UNITS: Final[Dict[str, str]] = {
     "MILLIGRAM_PER_LITER_OF_PHOSPHOR": "mg P/L",
     "MILLIGRAM_PER_LITER_OF_SODIUM_CHLORIDE": "mg NaCl/L",
     "MILLIGRAM_PER_LITER_OF_SULFATE": "mg SO4-2/L",
+
+    "MILLIGRAM_PER_LITER_OF_BISULFITE": "mg HSO3-/L",   #bisulfito
+
+    "MILLIGRAM_PER_LITER_OF_IRON2": "mg Fe2+/L",        #ferro2
+    "MILLIGRAM_PER_LITER_OF_IRON3": "mg Fe3+/L",        #ferro3
+    "PARTS_PER_MILLION": "ppm",   #emulsão e suspensão
+
+    "MILLIVOLTS": "mV",                                 #redox
+    "POWER_OF_HYDROGEN": None,                          #pH
+
     "MILLILITER": "mL",
     "MMOLES_PER_LITER": "mmoles H+/L",
     "MOL_PER_LITER": "mol/L",
@@ -58,11 +74,7 @@ UNITS: Final[Dict[str, str]] = {
 }
 
 
-DEFAULT_TRANSFORM: Callable[..., Dict[str, Any]] = albumentations.Compose([
-    albumentations.GlassBlur(max_delta=4, p=0.5),
-    albumentations.ISONoise(intensity=(0.10, 0.50), always_apply=True, p=0.9),
-    albumentations.RandomBrightnessContrast(brightness_limit=0.0, contrast_limit=0.2, p=1.0),
-])
+DEFAULT_TRANSFORM: Callable[..., Dict[str, Any]] = None
 
 
 T_co = TypeVar('T_co', covariant=True)
@@ -70,12 +82,12 @@ T_co = TypeVar('T_co', covariant=True)
 
 class SizedDataset(Sized, Dataset[T_co]):
     def __init__(self) -> None:
-        super(SizedDataset, self).__init__()
+        super().__init__()
 
 
 class SampleDataset(SizedDataset[Sample]):
     def __init__(self, base_dirs: Union[str, Iterable[str]], *, progress_bar: bool = True, skip_blank_samples: bool = True, skip_incomplete_samples: bool = True, skip_inference_sample: bool = True, skip_training_sample: bool = False, verbose: bool = True) -> None:
-        super(SampleDataset, self).__init__()
+        super().__init__()
         # Load the list of samples.
         all_samples, blanks = self._load_samples(
             [base_dirs] if isinstance(base_dirs, str) else list(base_dirs),
@@ -94,7 +106,7 @@ class SampleDataset(SizedDataset[Sample]):
             if (sample["isBlankSample"] and not skip_blank_samples) or (sample["isInferenceSample"] and not skip_inference_sample) or (sample["isTrainingSample"] and not skip_training_sample):
                 self._samples.append(sample)
         # Sort samples by date.
-        #self._samples.sort(key=lambda sample: sample["datetime"])
+        self._samples.sort(key=lambda sample: sample["datetime"])
 
     def __getitem__(self, index: int) -> Sample:
         return self._samples[index]
@@ -260,7 +272,7 @@ class SampleDataset(SizedDataset[Sample]):
 
 class ExpandedSampleDataset(SizedDataset[Sample]):
     def __init__(self, dataset: Dataset[Sample], *, progress_bar: bool = True) -> None:
-        super(ExpandedSampleDataset, self).__init__()
+        super().__init__()
         # Expand blank samples.
         expanded_blanks: Dict[int, List[Sample]] = dict()  # Dict[id, List[expanded_blank]]
         for sample in tqdm(dataset, desc="Expanding blanks", leave=False, disable=not progress_bar): # type: ignore
@@ -384,7 +396,6 @@ class ProcessedSample:
             np.savez_compressed(self._path(prefix, "img_to_pmf", ".npz"), img_ind=data["img_to_pmf"][0], pmf_ind=data["img_to_pmf"][1])
         return data[key]
 
-
     @property
     def blank_analyte_mask(self) -> np.ndarray:
         assert self.blank_prefix is not None
@@ -477,8 +488,8 @@ class ProcessedSample:
 
 
 class ProcessedSampleDataset(SizedDataset[ProcessedSample]):
-    def __init__(self, dataset: SizedDataset[Sample], cache_dir: str, *, num_augmented_samples: int = 0, progress_bar: bool = True, transform: Callable[..., Dict[str, Any]] = DEFAULT_TRANSFORM, **kwargs: Any) -> None:
-        super(ProcessedSampleDataset, self).__init__()
+    def __init__(self, dataset: SizedDataset[Sample], cache_dir: str, *, num_augmented_samples: int = 0, progress_bar: bool = True, transform: Optional[Callable[..., Dict[str, Any]]] = DEFAULT_TRANSFORM, **kwargs: Any) -> None:
+        super().__init__()
         os.makedirs(cache_dir, exist_ok=True)
         # Copy original BGR images of samples to root_dir and augment them, if needed.
         self.samples = dataset
@@ -516,7 +527,6 @@ class ProcessedSampleDataset(SizedDataset[ProcessedSample]):
     def __len__(self) -> int:
         return len(self._processed_samples)
 
-
     @abstractmethod
     def _compute_masks(self, bgr_img: np.ndarray, lab_img: np.ndarray, chamber_type: ChamberType) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         raise NotImplementedError  # To be implemented by the subclass.
@@ -540,7 +550,7 @@ class ProcessedSampleDataset(SizedDataset[ProcessedSample]):
         bounds: List[Tuple[int, int]] = list()
         if isinstance(used_msk, np.ndarray):
             for axis in range(used_msk.ndim):
-                used_axis = np.argwhere(np.logical_or.reduce(used_msk, axis=axis, initial=None))
+                used_axis = np.argwhere(np.logical_or.reduce(used_msk, axis=(*range(0, axis), *range(axis + 1, used_msk.ndim)), initial=None))
                 bounds.append((int(np.min(used_axis)), int(np.max(used_axis))))
         return tuple(bounds), (min_prob, max_prob)
 

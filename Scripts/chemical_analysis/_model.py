@@ -4,13 +4,13 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from datetime import datetime, timezone
 from fft_conv_pytorch import fft_conv
-from typing import Any, Callable, Optional, Tuple, Type, Union
+from typing import Any, Callable, List, Optional, Tuple, Type, Union
 import torch
 
 
 class Network(ABC, torch.nn.Module):
     def __init__(self, expected_range: Tuple[float, float], **_: Any) -> None:
-        super(Network, self).__init__()
+        super().__init__()
         now = datetime.now(timezone.utc)
         self._datetime = torch.nn.Parameter(torch.as_tensor((now.year, now.month, now.day, now.hour, now.minute, now.second), dtype=torch.int32), requires_grad=False)
         self._expected_range = torch.nn.Parameter(torch.as_tensor(expected_range, dtype=torch.float32), requires_grad=False)
@@ -23,7 +23,7 @@ class Network(ABC, torch.nn.Module):
     @abstractmethod
     def input_range(self) -> Tuple[float, float]:
         raise NotImplementedError  # To be implemented by the subclass.
-    
+
     @property
     @abstractmethod
     def input_roi(self) -> Tuple[Tuple[int, int], ...]:
@@ -38,7 +38,7 @@ class Network(ABC, torch.nn.Module):
     @abstractmethod
     def training_median(self) -> float:
         raise NotImplementedError  # To be implemented by the subclass.
-    
+
     @property
     def version(self) -> str:
         year, month, day, hour, minute, second = self._datetime
@@ -46,21 +46,54 @@ class Network(ABC, torch.nn.Module):
 
     @classmethod
     def load_from_checkpoint(cls, *args: Any, **kwargs: Any) -> "Network":
-        state_dict = torch.load(*args, **kwargs)
+        _device = "cuda" if torch.cuda.is_available() else "cpu"
+        state_dict = torch.load(*args, **kwargs, map_location=_device)
         hyper_parameters = state_dict["hyper_parameters"]
         net: Network = hyper_parameters["network_class"](**hyper_parameters)
         net.load_state_dict(OrderedDict([(key.lstrip("net."), value) for (key, value) in state_dict["state_dict"].items() if key.startswith("net.")]))
         return net
 
 
+class UpNetwork(ABC, torch.nn.Module):
+    def __init__(self, **_: Any) -> None:
+        super().__init__()
+        now = datetime.now(timezone.utc)
+        self._datetime = torch.nn.Parameter(torch.as_tensor((now.year, now.month, now.day, now.hour, now.minute, now.second), dtype=torch.int32), requires_grad=False)
+
+    @property
+    def version(self) -> str:
+        year, month, day, hour, minute, second = self._datetime
+        return f'{self.__class__.__name__}-{year:04d}.{month:02d}.{day:02d}-{hour:02d}:{minute:02d}:{second:02d}'
+
+    @classmethod
+    def load_from_checkpoint(cls, *args: Any, **kwargs: Any) -> "UpNetwork":
+        state_dict = torch.load(*args, **kwargs)
+        hyper_parameters = state_dict["hyper_parameters"]
+        net: UpNetwork = hyper_parameters["generator"]
+        net.load_state_dict(OrderedDict([(key.lstrip("generator."), value) for (key, value) in state_dict["state_dict"].items() if key.startswith("generator.")]))
+        return net
+
+    @classmethod
+    def calibrated_pmf_shape(cls, *args: Any, **kwargs: Any) -> Tuple:
+        state_dict = torch.load(*args, **kwargs)
+        hyper_parameters = state_dict["hyper_parameters"]
+        return hyper_parameters["calibrated_pmf_shape"]
+
+
+
 class ContinuousNetwork(Network):
     def __init__(self, **kwargs: Any) -> None:
-        super(ContinuousNetwork, self).__init__(**kwargs)
+        super().__init__(**kwargs)
+
+
+class ContinuousUpNetwork(UpNetwork):
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class IntervalNetwork(Network):
     def __init__(self, num_divisions: int, **kwargs: Any) -> None:
-        super(IntervalNetwork, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         assert num_divisions >= 0
         expected_begin, expected_end = self.expected_range
         interval_begin = torch.cat((torch.as_tensor([-float("Inf"), expected_begin], dtype=torch.float32), torch.linspace(0.0, expected_end, 2**num_divisions + 1, dtype=torch.float32)[1:]), dim=0)
@@ -75,7 +108,7 @@ class IntervalNetwork(Network):
 
 class EstimationFunction(ABC, torch.nn.Module):
     def __init__(self, network_class: Type[Network], *, checkpoint: Optional[str] = None, net: Optional[Network] = None) -> None:
-        super(EstimationFunction, self).__init__()
+        super().__init__()
         check_mutually_exclusive_kwargs(checkpoint=checkpoint, net=net)
         if checkpoint is not None:
             self.net = network_class.load_from_checkpoint(checkpoint)
@@ -91,7 +124,7 @@ class EstimationFunction(ABC, torch.nn.Module):
     @abstractmethod
     def _check_and_reshape_pmfs(self, **kwargs: Distribution) -> Tuple[torch.Tensor, ...]:
         raise NotImplementedError  # To be implemented by the subclass.
-    
+
     def forward(self, *, blank_pmf: Optional[Distribution] = None, calibrated_pmf: Optional[CalibratedDistributions] = None, sample_pmf: Optional[Distribution] = None) -> Union[Value, Values, Intervals]:
         check_mutually_exclusive_kwargs(blank_pmf=blank_pmf, calibrated_pmf=calibrated_pmf)
         check_mutually_exclusive_kwargs(sample_pmf=blank_pmf, calibrated_pmf=calibrated_pmf)
@@ -101,11 +134,13 @@ class EstimationFunction(ABC, torch.nn.Module):
             reshaped_sample_pmf, reshaped_blank_pmf = self._check_and_reshape_pmfs(sample_pmf=sample_pmf, blank_pmf=blank_pmf)
             # Compute C = A - B, where A is the random variable representing the sample and B is the random variable representing the blank sample.
             if ndim == 1:
-                reshaped_calibrated_pmf = torch.abs(fft_conv(reshaped_sample_pmf.unsqueeze(-2), reshaped_blank_pmf.unsqueeze(-2), padding=(reshaped_blank_pmf.shape[-1] // 2,)))  # Flip is not required because fft_conv implements the cross-correlation operator.
-                reshaped_calibrated_pmf = reshaped_calibrated_pmf[:, :, :reshaped_sample_pmf.shape[-1]].squeeze(1)
+                fft_convolution = fft_conv(reshaped_sample_pmf.unsqueeze(-2), reshaped_blank_pmf.unsqueeze(-2), padding=(reshaped_blank_pmf.shape[-1] - 1,))  # adicionado por necessidade do torch.maximum comparar elementwise
+                fft_convolution = torch.nn.functional.relu(fft_convolution, inplace=True)
+                reshaped_calibrated_pmf = fft_convolution[:, :, :fft_convolution.shape[-1]].squeeze(1)
             elif ndim == 2:
-                reshaped_calibrated_pmf = torch.abs(fft_conv(reshaped_sample_pmf, reshaped_blank_pmf, padding=(reshaped_blank_pmf.shape[-2] // 2, reshaped_blank_pmf.shape[-1] // 2)))  # Flip is not required because fft_conv implements the cross-correlation operator.
-                reshaped_calibrated_pmf = reshaped_calibrated_pmf[:, :, :reshaped_sample_pmf.shape[-2], :reshaped_sample_pmf.shape[-1]].squeeze(1)
+                fft_convolution = fft_conv(reshaped_sample_pmf, reshaped_blank_pmf, padding=(reshaped_blank_pmf.shape[-2] - 1, reshaped_blank_pmf.shape[-1] - 1))
+                fft_convolution = torch.nn.functional.relu(fft_convolution, inplace=True)
+                reshaped_calibrated_pmf = fft_convolution[:, :, :fft_convolution.shape[-2], :fft_convolution.shape[-1]].squeeze(1)
             else:
                 raise NotImplementedError
             # Predict value.
@@ -142,7 +177,7 @@ class SqueezeExcitation(torch.nn.Module):
         activation: Callable[..., torch.nn.Module] = torch.nn.ReLU,
         scale_activation: Callable[..., torch.nn.Module] = torch.nn.Sigmoid,
     ) -> None:
-        super(SqueezeExcitation, self).__init__()
+        super().__init__()
         self.avgpool = torch.nn.AdaptiveAvgPool2d(1)
         self.fc1 = torch.nn.Conv2d(input_channels, squeeze_channels, 1)
         self.fc2 = torch.nn.Conv2d(squeeze_channels, input_channels, 1)
@@ -174,7 +209,7 @@ class InvertedResidual(torch.nn.Module):
         activation_func: Callable[..., torch.nn.Module] = torch.nn.ReLU,
         excite_squeeze: bool = False,
     ) -> None:
-        super(InvertedResidual, self).__init__()
+        super().__init__()
         self.resnet = resnet
         self.expand = torch.nn.Sequential(
             torch.nn.Conv2d(in_channels, expand_channels, 1, bias=True),
@@ -199,7 +234,7 @@ class MobileNetV3Small(torch.nn.Module):
         in_channels: int = 3,
         num_classes: int = 1000
     ) -> None:
-        super(MobileNetV3Small, self).__init__()
+        super().__init__()
         self.features = torch.nn.Sequential(
             torch.nn.Conv2d(in_channels, 16, 3, stride=2, padding=1, bias=True),
             torch.nn.Hardswish(inplace=True),
@@ -246,6 +281,152 @@ class MobileNetV3Small(torch.nn.Module):
         return self.classifier(torch.flatten(self.avgpool(self.features(input)), 1))
 
 
+class InvertedResidualForShuffleNetV2(torch.nn.Module):
+    def __init__(self, inp: int, oup: int, stride: int) -> None:
+        super().__init__()
+        if not (1 <= stride <= 3):
+            raise ValueError("illegal stride value")
+        self.stride = stride
+        branch_features = oup // 2
+        if (self.stride == 1) and (inp != branch_features << 1):
+            raise ValueError(
+                f"Invalid combination of stride {stride}, inp {inp} and oup {oup} values. If stride == 1 then inp should be equal to oup // 2 << 1."
+            )
+        if self.stride > 1:
+            self.branch1 = torch.nn.Sequential(
+                self.depthwise_conv(inp, inp, kernel_size=3, stride=self.stride, padding=1),
+                torch.nn.BatchNorm2d(inp),
+                torch.nn.Conv2d(inp, branch_features, kernel_size=1, stride=1, padding=0, bias=False),
+                torch.nn.BatchNorm2d(branch_features),
+                torch.nn.ReLU(inplace=True),
+            )
+        else:
+            self.branch1 = torch.nn.Sequential()
+
+        self.branch2 = torch.nn.Sequential(
+            torch.nn.Conv2d(
+                inp if (self.stride > 1) else branch_features,
+                branch_features,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias=False,
+            ),
+            torch.nn.BatchNorm2d(branch_features),
+            torch.nn.ReLU(inplace=True),
+            self.depthwise_conv(branch_features, branch_features, kernel_size=3, stride=self.stride, padding=1),
+            torch.nn.BatchNorm2d(branch_features),
+            torch.nn.Conv2d(branch_features, branch_features, kernel_size=1, stride=1, padding=0, bias=False),
+            torch.nn.BatchNorm2d(branch_features),
+            torch.nn.ReLU(inplace=True),
+        )
+
+    @staticmethod
+    def depthwise_conv(i: int, o: int, kernel_size: int, stride: int = 1, padding: int = 0, bias: bool = False) -> torch.nn.Conv2d:
+        return torch.nn.Conv2d(i, o, kernel_size, stride, padding, bias=bias, groups=i)
+
+    @staticmethod
+    def channel_shuffle(x: torch.Tensor, groups: int) -> torch.Tensor:
+        batchsize, num_channels, height, width = x.size()
+        channels_per_group = num_channels // groups
+        # reshape
+        x = x.view(batchsize, groups, channels_per_group, height, width)
+        x = torch.transpose(x, 1, 2).contiguous()
+        # flatten
+        x = x.view(batchsize, num_channels, height, width)
+        return x
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.stride == 1:
+            x1, x2 = x.chunk(2, dim=1)
+            out = torch.cat((x1, self.branch2(x2)), dim=1)
+        else:
+            out = torch.cat((self.branch1(x), self.branch2(x)), dim=1)
+        out = self.channel_shuffle(out, 2)
+        return out
+
+
+class ShuffleNetV2(ABC, torch.nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        stages_repeats: List[int],
+        stages_out_channels: List[int],
+        num_classes: int,
+        inverted_residual: Callable[..., torch.nn.Module] = InvertedResidualForShuffleNetV2,
+    ) -> None:
+        super().__init__()
+        if len(stages_repeats) != 3:
+            raise ValueError("expected stages_repeats as list of 3 positive ints")
+        if len(stages_out_channels) != 5:
+            raise ValueError("expected stages_out_channels as list of 5 positive ints")
+        self._stage_out_channels = stages_out_channels
+        out_channels = self._stage_out_channels[0]
+        self.conv1 = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels, out_channels, 3, 2, 1, bias=False),
+            torch.nn.BatchNorm2d(out_channels),
+            torch.nn.ReLU(inplace=True),
+        )
+        in_channels = out_channels
+        self.maxpool = torch.nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        # Static annotations for mypy
+        self.stage2: torch.nn.Sequential
+        self.stage3: torch.nn.Sequential
+        self.stage4: torch.nn.Sequential
+        stage_names = [f"stage{i}" for i in [2, 3, 4]]
+        for name, repeats, out_channels in zip(stage_names, stages_repeats, self._stage_out_channels[1:]):
+            seq = [inverted_residual(in_channels, out_channels, 2)]
+            for i in range(repeats - 1):
+                seq.append(inverted_residual(out_channels, out_channels, 1))
+            setattr(self, name, torch.nn.Sequential(*seq))
+            in_channels = out_channels
+        out_channels = self._stage_out_channels[-1]
+        self.conv5 = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False),
+            torch.nn.BatchNorm2d(out_channels),
+            torch.nn.ReLU(inplace=True),
+        )
+        self.fc = torch.nn.Linear(out_channels, num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.conv1(x)
+        x = self.maxpool(x)
+        x = self.stage2(x)
+        x = self.stage3(x)
+        x = self.stage4(x)
+        x = self.conv5(x)
+        x = x.mean([2, 3])  # globalpool
+        x = self.fc(x)
+        return x
+
+
+class ShuffleNetV2X10(ShuffleNetV2):
+    def __init__(
+        self,
+        in_channels: int = 3,
+        num_classes: int = 1000,
+    ) -> None:
+        super().__init__(in_channels, [4, 8, 4], [24, 116, 232, 464, 1024], num_classes)
+
+
+class ShuffleNetV2X15(ShuffleNetV2):
+    def __init__(
+        self,
+        in_channels: int = 3,
+        num_classes: int = 1000,
+    ) -> None:
+        super().__init__(in_channels, [4, 8, 4], [24, 176, 352, 704, 1024], num_classes)
+
+
+class ShuffleNetV2X20(ShuffleNetV2):
+    def __init__(
+        self,
+        in_channels: int = 3,
+        num_classes: int = 1000,
+    ) -> None:
+        super().__init__(in_channels, [4, 8, 4],[24, 244, 488, 976, 2048], num_classes)
+
+
 class Fire(torch.nn.Module):
     def __init__(self,
         inplanes: int,
@@ -253,7 +434,7 @@ class Fire(torch.nn.Module):
         expand1x1_planes: int,
         expand3x3_planes: int,
     ) -> None:
-        super(Fire, self).__init__()
+        super().__init__()
         self.inplanes = inplanes
         self.squeeze = torch.nn.Conv2d(inplanes, squeeze_planes, kernel_size=1)
         self.squeeze_activation = torch.nn.ReLU(inplace=True)
@@ -273,7 +454,7 @@ class SqueezeNet1_1(torch.nn.Module):
         num_classes: int = 1000,
         scale_chs: float = 1.0,
     ) -> None:
-        super(SqueezeNet1_1, self).__init__()
+        super().__init__()
         # Resize must be in sequence (2, 4, 8, 16, 32, ...) or (1/2, 1/4, 1/8, 1/16, 1/32, ...).
         if (scale_chs % 2) != 0 and bin(int(1 / scale_chs)).count("1") != 1:
             raise ValueError("Option 'scale_chs' must be in sequence (2, 4, 8, 16, 32, ...) or (1/2, 1/4, 1/8, 1/16, 1/32, ...).")
@@ -320,7 +501,7 @@ class Fire_1d(torch.nn.Module):
         expand1x1_planes: int,
         expand3x3_planes: int,
     ) -> None:
-        super(Fire_1d, self).__init__()
+        super().__init__()
         self.inplanes = inplanes
         self.squeeze = torch.nn.Conv1d(inplanes, squeeze_planes, kernel_size=1)
         self.squeeze_activation = torch.nn.ReLU(inplace=True)
@@ -344,7 +525,7 @@ class SqueezeNet1_1_1d(torch.nn.Module):
         # resize must be in sequence (2, 4, 8, 16, 32, ...) or (1/2, 1/4, 1/8, 1/16, 1/32, ...).
         if (scale_chs % 2) != 0 and bin(int(1 / scale_chs)).count("1") != 1:
             raise ValueError("Option 'scale_chs' must be in sequence (2, 4, 8, 16, 32, ...) or (1/2, 1/4, 1/8, 1/16, 1/32, ...).")
-        super(SqueezeNet1_1_1d, self).__init__()
+        super().__init__()
         # Define 'feature' extraction backbone.
         scale_chs_ = {
             16: int(16 * scale_chs),
@@ -397,7 +578,7 @@ class Vgg11_1d(torch.nn.Module):
         in_channels: int = 3,
         num_classes: int = 1000
     ) -> None:
-        super(Vgg11_1d, self).__init__()
+        super().__init__()
         # Define 'feature' extraction backbone.
         self.features = torch.nn.Sequential(
             torch.nn.Conv1d(in_channels, 64, kernel_size=3, padding=1),
@@ -460,7 +641,7 @@ class Vgg19_1d(torch.nn.Module):
         in_channels: int = 3,
         num_classes: int = 1000
     ) -> None:
-        super(Vgg19_1d, self).__init__()
+        super().__init__()
         # Define 'feature' extraction backbone.
         self.features = torch.nn.Sequential(
             torch.nn.Conv1d(in_channels, 64, kernel_size=3, padding=1),
@@ -542,12 +723,12 @@ class Vgg19_1d(torch.nn.Module):
         return self.classifier(torch.flatten(self.avgpool(self.features(input)), 1))
 
 
-class VGG11(torch.nn.Module):
+class Vgg11(torch.nn.Module):
     def __init__(self, *,
         in_channels: int = 3,
         num_classes: int = 1000
     ) -> None:
-        super(VGG11, self).__init__()
+        super().__init__()
         # Define 'feature' extraction backbone.
         self.features = torch.nn.Sequential(
             torch.nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),
@@ -595,3 +776,86 @@ class VGG11(torch.nn.Module):
 
     def forward(self, input):
         return self.classifier(torch.flatten(self.avgpool(self.features(input)), 1))
+
+class UpVgg11(torch.nn.Module):
+    def __init__(self, *,
+        in_roi: Tuple[int, int],
+        in_channels: int = 512,
+        num_classes: int = 1
+    ) -> None:
+        super().__init__()
+        # Define 'feature' extraction backbone.
+        self.features = torch.nn.Sequential(
+            torch.nn.ConvTranspose2d(in_channels=in_channels, out_channels=512, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=512, out_channel=512, kernel_size=(3,3), padding=1, inplace=True),
+            self._deconv_block(in_channel=512, out_channel=512, kernel_size=(3,3), padding=1, inplace=True),
+            torch.nn.ConvTranspose2d(in_channels=512, out_channels=512, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=512, out_channel=512, kernel_size=(3,3), padding=1, inplace=True),
+            self._deconv_block(in_channel=512, out_channel=256, kernel_size=(3,3), padding=1, inplace=True),
+            torch.nn.ConvTranspose2d(in_channels=256, out_channels=256, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=256, out_channel=256, kernel_size=(3,3), padding=1, inplace=True),
+            self._deconv_block(in_channel=256, out_channel=128, kernel_size=(3,3), padding=1, inplace=True),
+            torch.nn.ConvTranspose2d(in_channels=128, out_channels=128, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=128, out_channel=64, kernel_size=(3,3), padding=1, inplace=True),
+            torch.nn.ConvTranspose2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=64, out_channel=32, kernel_size=(3,3), padding=1, inplace=True),
+            torch.nn.ConvTranspose2d(in_channels=32, out_channels=num_classes, kernel_size=2, stride=2),
+            torch.nn.AdaptiveMaxPool2d(output_size=self._calculate_roi_size(in_roi=in_roi)),
+        )
+
+    def forward(self, input):
+        features = self.features(input)
+        b,c,h,w = features.shape
+        features = torch.nn.functional.softmax(features.view(b,c,h*w), dim=-1).view_as(features)
+        return features
+
+    def _deconv_block(self, in_channel: int, out_channel: int, kernel_size: Tuple, padding: int, inplace: bool):
+        return torch.nn.Sequential(
+            torch.nn.LeakyReLU(inplace=inplace),
+            torch.nn.Conv2d(in_channel, out_channel, kernel_size=kernel_size, padding=padding),
+        )
+
+    def _calculate_roi_size(self, in_roi:Tuple[Tuple,...]) -> Tuple[int,...]:
+        return tuple(map(lambda x: x[1]+1-x[0], in_roi))
+
+
+class UpVgg11_1d(torch.nn.Module):
+    def __init__(self, *,
+        in_roi: Tuple[int, int],
+        in_channels: int = 512,
+        num_classes: int = 1
+    ) -> None:
+        super().__init__()
+        # Define 'feature' extraction backbone.
+        self.features = torch.nn.Sequential(
+            torch.nn.ConvTranspose1d(in_channels=in_channels, out_channels=512, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=512, out_channel=512, kernel_size=3, padding=1, inplace=True),
+            self._deconv_block(in_channel=512, out_channel=512, kernel_size=3, padding=1, inplace=True),
+            torch.nn.ConvTranspose1d(in_channels=512, out_channels=512, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=512, out_channel=512, kernel_size=3, padding=1, inplace=True),
+            self._deconv_block(in_channel=512, out_channel=256, kernel_size=3, padding=1, inplace=True),
+            torch.nn.ConvTranspose1d(in_channels=256, out_channels=256, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=256, out_channel=256, kernel_size=3, padding=1, inplace=True),
+            self._deconv_block(in_channel=256, out_channel=128, kernel_size=3, padding=1, inplace=True),
+            torch.nn.ConvTranspose1d(in_channels=128, out_channels=128, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=128, out_channel=64, kernel_size=3, padding=1, inplace=True),
+            torch.nn.ConvTranspose1d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+            self._deconv_block(in_channel=64, out_channel=32, kernel_size=3, padding=1, inplace=True),
+            torch.nn.ConvTranspose1d(in_channels=32, out_channels=num_classes, kernel_size=2, stride=2),
+            torch.nn.AdaptiveMaxPool1d(output_size=self._calculate_roi_size(in_roi=in_roi)),
+        )
+
+    def forward(self, input):
+        features = self.features(input)
+        b,c,w = features.shape
+        features = torch.nn.functional.softmax(features.view(b,c,w), dim=-1).view_as(features)
+        return features
+
+    def _deconv_block(self, in_channel: int, out_channel: int, kernel_size: Tuple, padding: int, inplace: bool):
+        return torch.nn.Sequential(
+            torch.nn.LeakyReLU(inplace=inplace),
+            torch.nn.Conv1d(in_channel, out_channel, kernel_size=kernel_size, padding=padding),
+        )
+
+    def _calculate_roi_size(self, in_roi:Tuple[Tuple,...]) -> Tuple[int,...]:
+        return tuple(map(lambda x: x[1]+1-x[0], in_roi))

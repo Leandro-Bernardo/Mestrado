@@ -123,3 +123,17 @@ Scripts/wandb
 Scripts/wandb/run-20240725_105645-cmmzypai/logs/
 
 Scripts/wandb/
+
+Scripts/loss/__pycache__/
+
+Scripts/MESTRADO_chemical_analysis (antigo)/
+
+Scripts/chemical_analysis/bisulfite2d/__pycache__/
+
+Scripts/chemical_analysis/iron2/__pycache__/
+
+Scripts/chemical_analysis/iron3/__pycache__/
+
+Scripts/chemical_analysis/iron_oxid/__pycache__/
+
+Scripts/dist2dist/__pycache__/

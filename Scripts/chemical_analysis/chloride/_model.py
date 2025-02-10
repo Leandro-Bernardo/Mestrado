@@ -1,5 +1,5 @@
 from .._model import *
-from ..typing import CalibratedDistributions, Distribution, Logits, Prediction
+from ..typing import CalibratedDistributions, Distribution, Logits, Prediction, ExtractedFeatures
 from collections import OrderedDict
 from torch.nn import Module
 from typing import Any, List, Tuple
@@ -36,6 +36,17 @@ class ChlorideNetwork(ContinuousNetwork):
         return float(self.model[-1].training_median)  # type: ignore
 
 
+class ChlorideUpNetwork(ContinuousUpNetwork):
+    def __init__(self, backbone: Module, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.model = torch.nn.Sequential(OrderedDict([
+            ("backbone", backbone),
+        ]))
+
+    def forward(self, extracted_feature: ExtractedFeatures) -> Prediction:
+        return self.model(extracted_feature)
+
+
 class ChlorideNetworkMobileNetV3Style(ChlorideNetwork):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(backbone=MobileNetV3Small(in_channels=1, num_classes=1), **kwargs)
@@ -49,6 +60,11 @@ class ChlorideNetworkSqueezeNetStyle(ChlorideNetwork):
 class ChlorideNetworkVgg11Style(ChlorideNetwork):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(backbone=Vgg11(in_channels=1, num_classes=1), **kwargs)
+
+
+class ChlorideNetworkUpVgg11Style(ChlorideUpNetwork):
+    def __init__(self, input_roi: Tuple[Tuple,...], in_channels: int, **kwargs: Any) -> None:
+        super().__init__(backbone=UpVgg11(in_roi=input_roi, in_channels=in_channels, num_classes=1), **kwargs)
 
 
 class ChlorideIntervalNetwork(IntervalNetwork):

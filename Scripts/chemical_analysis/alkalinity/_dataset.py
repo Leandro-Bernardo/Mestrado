@@ -7,7 +7,7 @@ import numpy as np
 
 class AlkalinitySampleDataset(SampleDataset):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(AlkalinitySampleDataset, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _parse_auxiliary_solutions(self, raw_sample: Dict[str, Any]) -> List[AuxiliarySolution]:
         return [
@@ -24,7 +24,7 @@ class AlkalinitySampleDataset(SampleDataset):
 
 class ProcessedAlkalinitySampleDataset(ProcessedSampleDataset):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(ProcessedAlkalinitySampleDataset, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._alkalinity_values = self.get_samples()
 
     @property
