@@ -1,4 +1,4 @@
-import chemical_analysis as ca
+import reinjecao.chemical_analysis as ca
 import matplotlib.pyplot as plt
 import cv2
 import numpy as np
@@ -7,10 +7,10 @@ import os
 
 from typing import Tuple, List, Dict, Any
 from tqdm import tqdm
-from chemical_analysis.alkalinity import AlkalinitySampleDataset, ProcessedAlkalinitySampleDataset
-from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideSampleDataset
-#from chemical_analysis.sulfate import SulfateSampleDataset, ProcessedSulfateSampleDataset
-#from chemical_analysis.phosphate import PhosphateSampleDataset, ProcessedPhosphateSampleDataset
+from reinjecao.chemical_analysis.alkalinity import AlkalinitySampleDataset, ProcessedAlkalinitySampleDataset
+from reinjecao.chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideSampleDataset
+#from reinjecao.chemical_analysis.sulfate import SulfateSampleDataset, ProcessedSulfateSampleDataset
+#from reinjecao.chemical_analysis.phosphate import PhosphateSampleDataset, ProcessedPhosphateSampleDataset
 
 ### Variables ###
 # reads setting`s json
@@ -22,9 +22,9 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     PROCESS_BLANK_FILES_SEPARATEDLY = settings["process_blank_files_separatedly"]
     IMAGE_SIZE = settings["image_size"]
 
-SAMPLES_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "train_samples", f"{ANALYTE}")
-SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "val_samples", f"{ANALYTE}")
-SAMPLES_TEST_PATH = os.path.join(os.path.dirname(__file__), "..",  "test_samples", f"{ANALYTE}")
+SAMPLES_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_samples", f"{ANALYTE}", "train_samples" )
+SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_samples", f"{ANALYTE}", "val_samples" )
+SAMPLES_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_samples", f"{ANALYTE}",  "test_samples" )
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
 if SKIP_BLANK == True and  PROCESS_BLANK_FILES_SEPARATEDLY == False:  # dont use blanks
@@ -157,6 +157,6 @@ def main(sample_path: str, save_path: str, stage:str):
 
 
 if __name__ == "__main__":
-    main(SAMPLES_TRAIN_PATH, SAVE_TRAIN_PATH, "train")
-    main(SAMPLES_VAL_PATH, SAVE_VAL_PATH, "validation")
+    #main(SAMPLES_TRAIN_PATH, SAVE_TRAIN_PATH, "train")
+    #main(SAMPLES_VAL_PATH, SAVE_VAL_PATH, "validation")
     main(SAMPLES_TEST_PATH, SAVE_TEST_PATH, "test")
