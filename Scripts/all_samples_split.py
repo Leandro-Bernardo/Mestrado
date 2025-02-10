@@ -9,8 +9,8 @@ DATASET_TRAIN_TEST_SPLIT = 0.8
 DATASET_TRAIN_VAL_SPLIT = 0.8
 
 #PATH = [f"c:\\Users\\Leandro Bernardo\\Desktop\\Mestrado\\{ANALYTE}_Samples"]
-PATH = [f"D:\\Mestrado\\{ANALYTE}_Samples"]
-SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_samples", f"{ANALYTE}")
+PATH = [f"Y:\\Leandro-Bernardo\\Mestrado\\{ANALYTE}_Samples"]
+SAVE_PATH = os.path.join(os.path.dirname(__file__), "..")
 def all_dirs(base_dirs):
     dirs = list()        # [dir, ...]
     not_visited_dirs = list(base_dirs)
@@ -60,9 +60,9 @@ def main():
     samples_paths = all_dirs(PATH)
     train_folders, val_folders, test_folders = split_folders(samples_paths)
 
-    copy_files(train_folders, "train", os.path.join(SAVE_PATH, "train_samples"))
-    copy_files(val_folders, "val", os.path.join(SAVE_PATH, "val_samples"))
-    copy_files(test_folders, "test", os.path.join(SAVE_PATH, "test_samples"))
+    copy_files(train_folders, "train", os.path.join(SAVE_PATH, "train_samples", f"{ANALYTE}"))
+    copy_files(val_folders, "val", os.path.join(SAVE_PATH, "val_samples", f"{ANALYTE}"))
+    copy_files(test_folders, "test", os.path.join(SAVE_PATH, "test_samples", f"{ANALYTE}"))
 
 if __name__ == "__main__":
     main()

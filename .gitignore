@@ -144,10 +144,6 @@ Scripts/checkpoint/
 
 Scripts/Chloride-reinjecao/w1pwj6he/checkpoints/
 
-Scripts/reinjecao/dataset/chloride/
+Scripts/dataset/chloride/
 
-
-
-Scripts/reinjecao/dist2dist/__pycache__/
-
-Scripts/loss/test_wasserstein.ipynb
+Scripts/reinjecao/

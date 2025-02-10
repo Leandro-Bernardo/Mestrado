@@ -3,7 +3,6 @@ import os
 import numpy as np
 import json, yaml
 import wandb
-from loss.wasserstein import Wasserstein
 
 from wandb.wandb_run import Run
 from tqdm import tqdm
@@ -63,8 +62,7 @@ networks_choices = {"Alkalinity": {"model_1": alkalinity.Model_1,
                                    "zero_dawn": chloride.Zero_Dawn}}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION]
 
-loss_function_choices = {"mean_squared_error": torch.nn.MSELoss(),
-                         "wasserstein": Wasserstein(),}
+loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
 LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
 
 # defines path dir
