@@ -22,9 +22,9 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     PROCESS_BLANK_FILES_SEPARATEDLY = settings["process_blank_files_separatedly"]
     IMAGE_SIZE = settings["image_size"]
 
-SAMPLES_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_samples",  f"{ANALYTE}",  "train_samples")
-SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_samples",  f"{ANALYTE}",  "val_samples")
-SAMPLES_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_samples",  f"{ANALYTE}",   "test_samples")
+SAMPLES_TRAIN_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_Samples",  f"{ANALYTE}",  "train_samples")
+SAMPLES_VAL_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_Samples",  f"{ANALYTE}",  "val_samples")
+SAMPLES_TEST_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_Samples",  f"{ANALYTE}",   "test_samples")
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
 if SKIP_BLANK == True and  PROCESS_BLANK_FILES_SEPARATEDLY == False:  # dont use blanks

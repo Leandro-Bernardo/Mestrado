@@ -28,4 +28,6 @@ dependencies:
   - pip
   - plotly
   - xlsxwriter
+  - fft_conv_pytorch
+  - torchsummary
   # pip install fft-conv-pytorch
