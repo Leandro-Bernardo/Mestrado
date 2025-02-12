@@ -25,61 +25,108 @@ class Wasserstein(pl.LightningModule):
         v_values : 1d torch.Tensor
             A sample from or the support of a second distribution.
 
-        u_weights, v_weights : 1d array_like, optional
-            Weights or counts corresponding with the sample or probability masses
-            corresponding with the support values. Sum of elements must be positive
-            and finite. If unspecified, each value is assigned the same weight.
-
     Returns:
         distance : torch.tensor
             The computed distance between the distributions.
     """
-    def __init__(self, u_values: torch.Tensor = None, v_values: torch.Tensor = None, u_weights: Optional[torch.Tensor] = None, v_weights: Optional[torch.Tensor] = None, p: int = 1):
+    def __init__(self, u_values: torch.Tensor = None, v_values: torch.Tensor = None, p: int = 1):
         super().__init__()
-        # self.u_values = u_values
-        # self.v_values = v_values
-        # self.u_weights = u_weights
-        # self.v_weights = v_weights
-        # self.p = p
 
-        #assert self.u_values != None, "u_values must be provided"
-        #assert self.v_values != None, "v_values must be provided"
-    # def forward(self):
-    #     p_sorted = torch.sort(self.p_distribution, dim=0)[0]
-    #     q_sorted = torch.sort(self.q_distribution, dim=0)[0]
-    #     p_CDF = torch.arange(1, len(p_sorted) + 1).float() / len(p_sorted)
-    #     q_CDF = torch.arange(1, len(q_sorted) + 1).float() / len(q_sorted)
-    #     elementwise_CDF_distances = p_CDF - q_CDF
-    #     #x = torch.pow(torch.pow(elementwise_cumsum_distances, self.p), 1/self.p)
-    #     #y = torch.cumsum(x, dim=0)
-    #     return p_CDF#torch.abs(elementwise_CDF_distances).sum()
 
     def forward(self, u_values: torch.Tensor, v_values: torch.Tensor, u_weights: Optional[torch.Tensor] = None, v_weights: Optional[torch.Tensor] = None, p: int =1):
-        u_sorter = torch.argsort(u_values)
-        v_sorter = torch.argsort(v_values)
 
-        all_values = torch.cat((u_values, v_values)).sort().values
-        deltas = torch.diff(all_values)
+        # X-Y
+        Z = u_values - v_values
 
-        u_cdf_indices = torch.searchsorted(u_values[u_sorter], all_values[:-1], right=True)
-        v_cdf_indices = torch.searchsorted(v_values[v_sorter], all_values[:-1], right=True)
+        # CDF(X-Y) (equivalent to CDF(X) - CDF(Y))
+        cumsum = torch.cumsum(Z,dim=0)
 
-        if u_weights is None:
-            u_cdf = u_cdf_indices.float() / u_values.size(0)
-        else:
-            u_sorted_cumweights = torch.cat((torch.tensor([0.0]), torch.cumsum(u_weights[u_sorter], 0)))
-            u_cdf = u_sorted_cumweights[u_cdf_indices] / u_sorted_cumweights[-1]
+        # |(CDF(X-Y))|
+        abs_cumsum = torch.abs(cumsum)
 
-        if v_weights is None:
-            v_cdf = v_cdf_indices.float() / v_values.size(0)
-        else:
-            v_sorted_cumweights = torch.cat((torch.tensor([0.0]), torch.cumsum(v_weights[v_sorter], 0)))
-            v_cdf = v_sorted_cumweights[v_cdf_indices] / v_sorted_cumweights[-1]
+        # W(X,Y) = Σ|(CDF(X-Y))|
+        wasserstein_distance = torch.sum(abs_cumsum)
 
-        wasserstein_distance = torch.pow(torch.sum(torch.pow(torch.abs(u_cdf - v_cdf), p) * deltas), 1/p)
+        return wasserstein_distance
 
-        return wasserstein_distance.requires_grad_(True) # returns a tensor with gradient tracking enabled
 
+
+# class Wasserstein(pl.LightningModule):
+#     """
+#     Compute the  Wasserstein distance between two 1D discrete distributions with momentum p.
+
+#     The Wasserstein distance is a similarity metric between two probability
+#     distributions . In the discrete case, the Wasserstein distance can be
+#     understood as the cost of an optimal transport plan to convert one
+#     distribution into the other. The cost is calculated as the product of the
+#     amount of probability mass being moved and the distance it is being moved.
+
+#     When p=1, the Wasserstein distance is equivalent to the Earth Mover's Distance
+
+
+#     Args:
+#         u_values : 1d torch.Tensor
+#             A sample from a probability distribution or the support (set of all
+#             possible values) of a probability distribution. Each element is an
+#             observation or possible value.
+
+#         v_values : 1d torch.Tensor
+#             A sample from or the support of a second distribution.
+
+#         u_weights, v_weights : 1d array_like, optional
+#             Weights or counts corresponding with the sample or probability masses
+#             corresponding with the support values. Sum of elements must be positive
+#             and finite. If unspecified, each value is assigned the same weight.
+
+#     Returns:
+#         distance : torch.tensor
+#             The computed distance between the distributions.
+#     """
+#     def __init__(self, u_values: torch.Tensor = None, v_values: torch.Tensor = None, u_weights: Optional[torch.Tensor] = None, v_weights: Optional[torch.Tensor] = None, p: int = 1):
+#         super().__init__()
+#         # self.u_values = u_values
+#         # self.v_values = v_values
+#         # self.u_weights = u_weights
+#         # self.v_weights = v_weights
+#         # self.p = p
+
+#         #assert self.u_values != None, "u_values must be provided"
+#         #assert self.v_values != None, "v_values must be provided"
+#     # def forward(self):
+#     #     p_sorted = torch.sort(self.p_distribution, dim=0)[0]
+#     #     q_sorted = torch.sort(self.q_distribution, dim=0)[0]
+#     #     p_CDF = torch.arange(1, len(p_sorted) + 1).float() / len(p_sorted)
+#     #     q_CDF = torch.arange(1, len(q_sorted) + 1).float() / len(q_sorted)
+#     #     elementwise_CDF_distances = p_CDF - q_CDF
+#     #     #x = torch.pow(torch.pow(elementwise_cumsum_distances, self.p), 1/self.p)
+#     #     #y = torch.cumsum(x, dim=0)
+#     #     return p_CDF#torch.abs(elementwise_CDF_distances).sum()
+
+#     def forward(self, u_values: torch.Tensor, v_values: torch.Tensor, u_weights: Optional[torch.Tensor] = None, v_weights: Optional[torch.Tensor] = None, p: int =1):
+#         u_sorter = torch.argsort(u_values)
+#         v_sorter = torch.argsort(v_values)
+
+#         all_values = torch.cat((u_values, v_values)).sort().values
+#         deltas = torch.diff(all_values)
+
+#         u_cdf_indices = torch.searchsorted(u_values[u_sorter], all_values[:-1], right=True)
+#         v_cdf_indices = torch.searchsorted(v_values[v_sorter], all_values[:-1], right=True)
+
+#         if u_weights is None:
+#             u_cdf = u_cdf_indices.float() / u_values.size(0)
+#         else:
+#             u_sorted_cumweights = torch.cat((torch.tensor([0.0]), torch.cumsum(u_weights[u_sorter], 0)))
+#             u_cdf = u_sorted_cumweights[u_cdf_indices] / u_sorted_cumweights[-1]
+
+#         if v_weights is None:
+#             v_cdf = v_cdf_indices.float() / v_values.size(0)
+#         else:
+#             v_sorted_cumweights = torch.cat((torch.tensor([0.0]), torch.cumsum(v_weights[v_sorter], 0)))
+#             v_cdf = v_sorted_cumweights[v_cdf_indices] / v_sorted_cumweights[-1]
+
+#         wasserstein_distance = torch.pow(torch.sum(torch.pow(torch.abs(u_cdf - v_cdf), p) * deltas), 1/p)
+
+#         return wasserstein_distance.requires_grad_(True) # returns a tensor with gradient tracking enabled
 """
 x = p - q
 y = torch.cumsum(x, dim=0)
