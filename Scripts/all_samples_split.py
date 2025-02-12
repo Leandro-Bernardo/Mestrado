@@ -10,7 +10,7 @@ DATASET_TRAIN_VAL_SPLIT = 0.8
 
 #PATH = [f"c:\\Users\\Leandro Bernardo\\Desktop\\Mestrado\\{ANALYTE}_Samples"]
 PATH = [f"Y:\\Leandro-Bernardo\\Mestrado\\{ANALYTE}_Samples"]
-SAVE_PATH = os.path.join(os.path.dirname(__file__), "..")
+SAVE_PATH = os.path.join(os.path.dirname(__file__), "..", "Splited_samples")
 def all_dirs(base_dirs):
     dirs = list()        # [dir, ...]
     not_visited_dirs = list(base_dirs)
