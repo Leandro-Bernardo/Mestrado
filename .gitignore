@@ -157,3 +157,5 @@ Scripts/chemical_analysis/phosphate/__pycache__/
 Scripts/chemical_analysis/redox/__pycache__/
 
 Scripts/chemical_analysis/sulfate/__pycache__/
+
+Scripts/loss/test_wasserstein.ipynb

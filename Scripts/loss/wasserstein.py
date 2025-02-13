@@ -35,14 +35,15 @@ class Wasserstein(pl.LightningModule):
 
     def forward(self, u_values: torch.Tensor, v_values: torch.Tensor, u_weights: Optional[torch.Tensor] = None, v_weights: Optional[torch.Tensor] = None, p: int =1):
 
-        # X-Y
-        Z = u_values - v_values
+        # sorts X and Y
+        X, Y = torch.sort(u_values, dim=0), torch.sort(v_values, dim=0)
 
-        # CDF(X-Y) (equivalent to CDF(X) - CDF(Y))
-        cumsum = torch.cumsum(Z,dim=0)
+        # CDF(X), CDF(Y)
+        cs_x, cs_y = torch.cumsum(X,dim=0), torch.cumsum(Y,dim=0)
 
-        # |(CDF(X-Y))|
-        abs_cumsum = torch.abs(cumsum)
+        # |(CDF(X) - CDF(Y)|
+        diff = cs_x - cs_y
+        abs_cumsum = torch.abs(diff)
 
         # W(X,Y) = Σ|(CDF(X-Y))|
         wasserstein_distance = torch.sum(abs_cumsum)
