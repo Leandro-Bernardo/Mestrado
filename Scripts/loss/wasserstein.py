@@ -36,7 +36,7 @@ class Wasserstein(pl.LightningModule):
     def forward(self, u_values: torch.Tensor, v_values: torch.Tensor, u_weights: Optional[torch.Tensor] = None, v_weights: Optional[torch.Tensor] = None, p: int =1):
 
         # sorts X and Y
-        X, Y = torch.sort(u_values, dim=0), torch.sort(v_values, dim=0)
+        X, Y = torch.sort(u_values, dim=0)[0], torch.sort(v_values, dim=0)[0]
 
         # CDF(X), CDF(Y)
         cs_x, cs_y = torch.cumsum(X,dim=0), torch.cumsum(Y,dim=0)
