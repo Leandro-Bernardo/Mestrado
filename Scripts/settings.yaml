@@ -42,7 +42,7 @@ models:
   learning_rate: 0.001
   learning_rate_patience: 5
   gradient_clipping: 0.5
-  loss_function: mean_squared_error
+  loss_function: wasserstein
   optimizer: sgd
   batch_size: 150
   batch_normalization: true
