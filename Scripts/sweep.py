@@ -17,9 +17,9 @@ class AnalyteClasses(NamedTuple):
 
 # Default values for Weights & Biases arguments.
 DEFAULT_WANDB_ENTITY_NAME: Final[str] = "uff-and-prograf"
-DEFAULT_WANDB_PROJECT_NAME_MASK: Final[str] = "Chloride-reinjecao"
+DEFAULT_WANDB_PROJECT_NAME_MASK: Final[str] = "Chloride"
 DEFAULT_WANDB_SWEEP_ID: Final[Optional[str]] = None
-DEFAULT_WANDB_SWEEP_NAME: Final[Optional[str]] = "new sweep" if DEFAULT_WANDB_SWEEP_ID is None else None
+DEFAULT_WANDB_SWEEP_NAME: Final[Optional[str]] = "New Sweep" if DEFAULT_WANDB_SWEEP_ID is None else None
 DEFAULT_WANDB_MODE: Final[str] = WandbMode.ONLINE # After offline training is necessary make the upload using 'wandb sync --include-offline .\wandb\offline-*'
 
 # Default values for network model arguments.
@@ -181,7 +181,9 @@ def main(args: Namespace) -> None:
             seed=args.seed,
             # Dataset arguments.
             dataset_root_dir=args.dataset_root_dir,
-            fit_samples_base_dirs=args.fit_samples_base_dirs,
+            #fit_samples_base_dirs=args.fit_samples_base_dirs,
+            fit_train_samples_base_dirs=args.fit_train_samples_base_dirs,
+            fit_val_samples_base_dirs=args.fit_val_samples_base_dirs,
             num_augmented_samples=args.num_augmented_samples,
             processed_sample_dataset_class=args.net.processed_sample_dataset_class,
             reduction_level=args.reduction_level,
