@@ -1,21 +1,23 @@
 
 import torch
 import pytorch_lightning as pl
+import kornia
 
 from typing import Optional, List
-from tensordict.tensordict import TensorDict
+#from tensordict.tensordict import TensorDict
 
 
-class EMD(pl.LightningModule):
+class EMD(torch.nn.Module):
     """
     Compute the Earth Mover's Distance between two 1D discrete distributions (or observations).
 
-    The Earth Mover's Distance is a similarity metric between two probability distributions.
-    In the discrete case, the Earth Mover's Distance can be understood as
+    The EMD is a similarity metric between two probability distributions.
+    In the discrete case, the Wasserstein distance can be understood as
     the cost of an optimal transport plan to convert one distribution into the other.
     The cost is calculated as the product of the amount of probability mass being moved and the distance it is being moved.
 
-    The Earth Mover's Distance is equal to the Wasserstein distance when p=1
+    When p=1, the Wasserstein distance is equivalent to the Earth Mover's Distance
+
 
     Args:
         X : 1d torch.Tensor
@@ -35,87 +37,141 @@ class EMD(pl.LightningModule):
     def __init__(self):
         super().__init__()
 
-    def calculate_PMF(self, distribution):
-
-        # rounds inputs tensors (loses precision, but increases performance)
-        dist = torch.round(distribution, decimals=0)
-
-        # sorts distribution`s values
-        dist = torch.sort(dist)[0]
-
-        # adds one extra dimention to input tensor
-        unsqueezed_dist = torch.unsqueeze(dist, dim=1)
-
-        # creates a tensor with frequency of occurences of inputs tensors (assumption: all possible values are independent and equiprobable)
-        freqs = torch.full(unsqueezed_dist.size(), 1/torch.numel(dist), device='cuda')
-
-        # concats tensors, making a PMF
-        PMF = torch.cat((unsqueezed_dist, freqs), dim=1)
-
-        # calculates real occurence of values (not attached to grad`s graph)
-        bins, counts = torch.unique(dist, return_counts=True)
-        real_freqs = counts/torch.numel(dist)
-
-        # verifies argwhere (position) the real frequency is not 1/N
-        argswhere_freq_diff = torch.where(real_freqs != 1/torch.numel(dist))[0]
-
-        # finds repeated elements and creates a boolean mask to remove them later
-        mask = torch.ones(torch.numel(dist), dtype=torch.bool)
-
-        for index in argswhere_freq_diff:
-            argswhere = torch.where(dist == bins[index])[0]
-            mask[argswhere[1:]] = False  # holds the first occurency of repeated elements (the rest is removed)
-
-        # switches theoretical frequency to the real frequency
-        for i, val in enumerate(bins):
-            PMF[PMF[:, 0] == val, 1] = real_freqs[i]
-
-        # removes repeated elements
-        PMF = PMF[mask]
-
-        return PMF
-
-    def argwhere_bins(self, PMF_X, PMF_Y):
-
-        # finds argwhere bins of y are in x
-        argswhere_bins_of_y_in_x = []
-        for value in PMF_Y[:,0]:
-            in_x = torch.where(PMF_X[:, 0] == value)
-            argswhere_bins_of_y_in_x.extend(in_x[0])
-
-        # finds argwhere bins of x are in y
-        argswhere_bins_of_x_in_y = []
-        for value in PMF_X[:,0]:
-            in_y = torch.where(PMF_Y[:, 0] == value)
-            argswhere_bins_of_x_in_y.extend(in_y[0])
-
-        assert len(argswhere_bins_of_y_in_x) == len(argswhere_bins_of_x_in_y)
-        return argswhere_bins_of_y_in_x, argswhere_bins_of_x_in_y
 
     def forward(self, X: torch.Tensor, Y: torch.Tensor):
-        PMF_X = self.calculate_PMF(X)
-        PMF_Y = self.calculate_PMF(Y)
-        argswhere_bins_of_y_in_x, argswhere_bins_of_x_in_y = self.argwhere_bins(PMF_X, PMF_Y)
-        # calculates PMF X(i) - PMF Y(i)
-        PMF_Y[:,1] *= -1
-        for i in range(len(argswhere_bins_of_y_in_x)):
-            in_x = argswhere_bins_of_y_in_x[i]
-            in_y = argswhere_bins_of_x_in_y[i]
-            PMF_X[in_x, 1] = PMF_X[in_x, 1] + PMF_Y[in_y, 1]
-        mask = torch.ones(torch.numel(PMF_Y[:,0]), dtype=torch.bool)
-        for i in range(len(argswhere_bins_of_x_in_y)):
-            in_y = argswhere_bins_of_x_in_y[i]
-            mask[in_y] = False
-        # PMF Z = PMF X - PMF Y
-        PMF_Z = torch.cat((PMF_X, PMF_Y[mask]))
-        # gets indices of sorted bins (not differentiable)
-        sorted_indices = torch.argsort(PMF_Z[:, 0])
-        # rearranges according to sorted indices
-        PMF_Z = PMF_Z[sorted_indices]
-        # calculates cum sum on frequency values
-        cumsum_PMF = torch.cat((PMF_Z[:, :1], torch.cumsum(PMF_Z[:, 1:], dim=0)), dim=1)
-        emd = torch.sum(torch.abs(cumsum_PMF[:,1]))
+
+        bins = torch.cat([X,Y], dim=0).unique().detach()
+
+        hist_X = kornia.enhance.histogram(X[None,...], bins=bins,bandwidth=torch.tensor(0.9)).squeeze(dim=0)
+        hist_Y = kornia.enhance.histogram(Y[None,...], bins=bins,bandwidth=torch.tensor(0.9)).squeeze(dim=0)
+
+        PMF_X = hist_X/hist_X.sum()
+        PMF_Y = hist_Y/hist_Y.sum()
+
+        emd = torch.cumsum(PMF_X - PMF_Y, dim=-1).abs().sum()
+
         return emd
+
+# class EMD(pl.LightningModule):
+#     """
+#     Compute the Earth Mover's Distance between two 1D discrete distributions (or observations).
+
+#     The Earth Mover's Distance is a similarity metric between two probability distributions.
+#     In the discrete case, the Earth Mover's Distance can be understood as
+#     the cost of an optimal transport plan to convert one distribution into the other.
+#     The cost is calculated as the product of the amount of probability mass being moved and the distance it is being moved.
+
+#     The Earth Mover's Distance is equal to the Wasserstein distance when p=1
+
+#     Args:
+#         X : 1d torch.Tensor
+#             A sample from a probability distribution or the support (set of all
+#             possible values) of a probability distribution. Each element is an
+#             observation or possible value.
+
+#         Y : 1d torch.Tensor
+#             A sample from or the support of a second distribution. Each element is an
+#             observation or possible value.
+
+#     Returns:
+#         distance : torch.tensor
+#             The computed distance between the distributions.
+#     """
+
+#     def __init__(self):
+#         super().__init__()
+
+#     def calculate_PMF(self, distribution):
+
+#         # rounds inputs tensors (loses precision, but increases performance)
+#         dist = torch.round(distribution, decimals=0)
+
+#         # sorts distribution`s values
+#         dist = torch.sort(dist)[0]
+
+#         # adds one extra dimention to input tensor
+#         unsqueezed_dist = torch.unsqueeze(dist, dim=1)
+
+#         # creates a tensor with frequency of occurences of inputs tensors (assumption: all possible values are independent and equiprobable)
+#         freqs = torch.full(unsqueezed_dist.size(), 1/torch.numel(dist), device='cuda')
+
+#         # concats tensors, making a PMF
+#         PMF = torch.cat((unsqueezed_dist, freqs), dim=1)
+
+#         # calculates real occurence of values (not attached to grad`s graph)
+#         bins, counts = torch.unique(dist, return_counts=True)
+#         real_freqs = counts/torch.numel(dist)
+
+#         # verifies argwhere (position) the real frequency is not 1/N
+#         argswhere_freq_diff = torch.where(real_freqs != 1/torch.numel(dist))[0]
+
+#         # finds repeated elements and creates a boolean mask to remove them later
+#         mask = torch.ones(torch.numel(dist), dtype=torch.bool)
+
+#         for index in argswhere_freq_diff:
+#             argswhere = torch.where(dist == bins[index])[0]
+#             mask[argswhere[1:]] = False  # holds the first occurency of repeated elements (the rest is removed)
+
+#         # switches theoretical frequency to the real frequency
+#         for i, val in enumerate(bins):
+#             PMF[PMF[:, 0] == val, 1] = real_freqs[i]
+
+#         # removes repeated elements
+#         PMF = PMF[mask]
+
+#         return PMF
+
+#     def argwhere_bins(self, PMF_X, PMF_Y):
+
+#         # finds argwhere bins of y are in x
+#         argswhere_bins_of_y_in_x = []
+#         for value in PMF_Y[:,0]:
+#             in_x = torch.where(PMF_X[:, 0] == value)
+#             argswhere_bins_of_y_in_x.extend(in_x[0])
+
+#         # finds argwhere bins of x are in y
+#         argswhere_bins_of_x_in_y = []
+#         for value in PMF_X[:,0]:
+#             in_y = torch.where(PMF_Y[:, 0] == value)
+#             argswhere_bins_of_x_in_y.extend(in_y[0])
+
+#         assert len(argswhere_bins_of_y_in_x) == len(argswhere_bins_of_x_in_y)
+#         return argswhere_bins_of_y_in_x, argswhere_bins_of_x_in_y
+
+#     def forward(self, X: torch.Tensor, Y: torch.Tensor):
+#         PMF_X = self.calculate_PMF(X)
+#         PMF_Y = self.calculate_PMF(Y)
+#         argswhere_bins_of_y_in_x, argswhere_bins_of_x_in_y = self.argwhere_bins(PMF_X, PMF_Y)
+
+#         # calculates PMF X(i) - PMF Y(i)
+#         PMF_Y[:,1] *= -1
+
+#         for i in range(len(argswhere_bins_of_y_in_x)):
+#             in_x = argswhere_bins_of_y_in_x[i]
+#             in_y = argswhere_bins_of_x_in_y[i]
+#             PMF_X[in_x, 1] = PMF_X[in_x, 1] + PMF_Y[in_y, 1]
+
+#         mask = torch.ones(torch.numel(PMF_Y[:,0]), dtype=torch.bool)
+
+#         for i in range(len(argswhere_bins_of_x_in_y)):
+#             in_y = argswhere_bins_of_x_in_y[i]
+#             mask[in_y] = False
+
+#         # PMF Z = PMF X - PMF Y
+#         PMF_Z = torch.cat((PMF_X, PMF_Y[mask]))
+
+#         # gets indices of sorted bins (not differentiable)
+#         sorted_indices = torch.argsort(PMF_Z[:, 0])
+
+#         # rearranges according to sorted indices
+#         PMF_Z = PMF_Z[sorted_indices]
+
+#         # calculates cum sum on frequency values
+#         cumsum_PMF = torch.cat((PMF_Z[:, :1], torch.cumsum(PMF_Z[:, 1:], dim=0)), dim=1)
+
+#         emd = torch.sum(torch.abs(cumsum_PMF[:,1]))
+
+#         return emd
 
 #disabled
 
