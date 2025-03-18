@@ -7,20 +7,13 @@ import wandb
 from wandb.wandb_run import Run
 from tqdm import tqdm
 from models import alkalinity, chloride
-from loss.wasserstein import Wasserstein
+from loss.wasserstein import EMD
 from models.lightning import DataModule, BaseModel
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-
-if not torch.cuda.is_available():
-    assert("cuda isnt available")
-    device = "cuda"
-
-else:
-    device = "cuda"
 
 os.environ["WANDB_CONSOLE"] = "off"  # Needed to avoid "ValueError: signal only works in main thread of the main interpreter".
 
@@ -64,7 +57,7 @@ networks_choices = {"Alkalinity": {"model_1": alkalinity.Model_1,
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION]
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss(),
-                         "wasserstein": Wasserstein()}
+                         "earth_movers_distance": EMD()}
 LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
 
 # defines path dir
