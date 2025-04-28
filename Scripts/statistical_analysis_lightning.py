@@ -65,13 +65,14 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                  #"best_model_3blocks_resnet50": chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH),
                                  #"best_model_2blocks_resnet50": chloride.Best_Model_2blocks_resnet50(DESCRIPTOR_DEPTH),
                                  #"best_model_2blocks_resnet50_img_size_448": chloride.Best_Model_2blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH),
-                                 "best_model_3blocks_resnet50_img_size_448": chloride.Best_Model_3blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH),
+                                 #"best_model_3blocks_resnet50_img_size_448": chloride.Best_Model_3blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH),
                                  #"second_best_model_3blocks_resnet50_img_size_448": chloride.Second_Best_Model_3blocks_resnet50_img_size_448(DESCRIPTOR_DEPTH),
+                                 "best_model_3blocks_resnet50_img_size_448_emd": chloride.Best_Model_3blocks_resnet50_imgsize_448_EMD(DESCRIPTOR_DEPTH),
                                  }}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
 loss_function_choices = {"mean_squared_error": torch.nn.MSELoss()}
-LOSS_FUNCTION = loss_function_choices[LOSS_FUNCTION]
+LOSS_FUNCTION = loss_function_choices["mean_squared_error"]
 
 
 if SKIP_BLANK:

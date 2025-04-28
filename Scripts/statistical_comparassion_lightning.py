@@ -23,12 +23,6 @@ from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideS
 #from chemical_analysis.phosphate import PhosphateSampleDataset, ProcessedPhosphateSampleDataset, PhosphateEstimationFunction
 from typing import Tuple, List, Dict
 
-if not torch.cuda.is_available():
-    assert("cuda isnt available")
-
-else:
-    device = "cuda"
-
 
 ### Variables for descriptor based model ###
 # reads setting`s yaml
