@@ -28,6 +28,7 @@ dependencies:
   - pip
   - plotly
   - xlsxwriter
+  - tensordict
   # pip install fft_conv_pytorch
   # pip install torchsummary
   # pip install fft-conv-pytorch
