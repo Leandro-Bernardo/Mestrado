@@ -4,7 +4,7 @@ import shutil
 
 from tqdm import tqdm
 
-ANALYTE = "Chloride"
+ANALYTE = "Ph"
 DATASET_TRAIN_TEST_SPLIT = 0.8
 DATASET_TRAIN_VAL_SPLIT = 0.8
 

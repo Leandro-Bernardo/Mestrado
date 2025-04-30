@@ -9,6 +9,7 @@ from typing import Tuple, List, Dict, Any
 from tqdm import tqdm
 from chemical_analysis.alkalinity import AlkalinitySampleDataset, ProcessedAlkalinitySampleDataset
 from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideSampleDataset
+from chemical_analysis.ph import PhSampleDataset, ProcessedPhSampleDataset
 #from chemical_analysis.sulfate import SulfateSampleDataset, ProcessedSulfateSampleDataset
 #from chemical_analysis.phosphate import PhosphateSampleDataset, ProcessedPhosphateSampleDataset
 
@@ -66,6 +67,7 @@ def main(sample_path: str, save_path: str, stage:str):
                         "Chloride": {"dataset": ChlorideSampleDataset, "processed_dataset": ProcessedChlorideSampleDataset},
                         #"Sulfate": {"dataset": SulfateSampleDataset, "processed_dataset": ProcessedSulfateSampleDataset},
                         #"Phosphate": {"dataset": PhosphateSampleDataset, "processed_dataset": ProcessedPhosphateSampleDataset},
+                        "Ph": {"dataset": PhSampleDataset, "processed_dataset": ProcessedPhSampleDataset},
                         }
 
     pca_stats = {
@@ -107,6 +109,13 @@ def main(sample_path: str, save_path: str, stage:str):
             lab_mean= pca_stats[f"{ANALYTE}"]['lab_mean'],
             lab_sorted_eigenvectors = pca_stats[f"{ANALYTE}"]['lab_sorted_eigenvectors'])
 
+    elif ANALYTE == "Ph":
+        processed_samples = ProcessedSampleDataset(
+        dataset = samples,
+        cache_dir = CACHE_PATH,
+        num_augmented_samples = 0,
+        progress_bar = True,
+        transform = None, )
 
     #centered crop
     count_of_valid_samples = 0
@@ -134,8 +143,12 @@ def main(sample_path: str, save_path: str, stage:str):
             plt.imsave(f"{save_path}/sample_{count_of_valid_samples}.png", cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)/255)
 
             #saves analyte value
-            with open(f"{save_path}/sample_{count_of_valid_samples}.txt", "w", encoding='utf-8') as f:
-                json.dump(processed_samples.analyte_values[i]['theoreticalValue'], f, ensure_ascii=False, indent=4)
+            if ANALYTE != 'Ph':
+                with open(f"{save_path}/sample_{count_of_valid_samples}.txt", "w", encoding='utf-8') as f:
+                    json.dump(processed_samples.analyte_values[i]['theoreticalValue'], f, ensure_ascii=False, indent=4)
+            elif ANALYTE == 'Ph': # takes the raw value from json (and not the theoretical value) (exception because pH doesnt need the theoretical value correction)
+                with open(f"{save_path}/sample_{count_of_valid_samples}.txt", "w", encoding='utf-8') as f:
+                    json.dump(processed_samples.analyte_values[i]['sourceStock']['value'], f, ensure_ascii=False, indent=4)
 
             #saves analyte identifier
             with open(f"{save_path}/sample_{count_of_valid_samples}_identity.txt", "w", encoding='utf-8') as f:

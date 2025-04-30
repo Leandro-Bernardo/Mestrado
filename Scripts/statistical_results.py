@@ -24,7 +24,7 @@ from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideS
 
 from typing import Tuple, List, Dict
 
-CREATE_HISTOGRAMS = False
+CREATE_HISTOGRAMS = True
 CREATE_STATISTICS = True
 
 ### Variables ###
@@ -66,7 +66,6 @@ PMF_MODEL_PATH = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALY
 SAMPLES_ROOT = os.path.join(os.path.dirname(__file__), "..", f"{IMAGES_TO_EVALUATE}_samples")
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
-
 if SKIP_BLANK:
     # model path
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMAGE_SIZE})(loss_{LOSS_FUNCTION})")
@@ -76,8 +75,8 @@ if SKIP_BLANK:
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # results path
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}","no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}")
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}", "statistics" )
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}","no_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "no_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}", "statistics" )
 else:
     # model path
     CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMAGE_SIZE})(loss_{LOSS_FUNCTION})")
@@ -87,8 +86,8 @@ else:
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # results path
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}")
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}", "statistics" )
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "with_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}", "statistics" )
 
 CHECKPOINT_FILENAME = f"checkpoint.ckpt"
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)
@@ -109,6 +108,7 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                  #"best_model_2blocks_resnet50_img_size_448": chloride.Best_Model_2blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH),
                                  #"best_model_3blocks_resnet50_img_size_448": chloride.Best_Model_3blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH),
                                  #"second_best_model_3blocks_resnet50_img_size_448": chloride.Second_Best_Model_3blocks_resnet50_img_size_448(DESCRIPTOR_DEPTH),
+                                 "best_model_3blocks_resnet50_img_size_448_mse": chloride.Best_Model_3blocks_resnet50_imgsize_448_MSE(DESCRIPTOR_DEPTH),
                                  "best_model_3blocks_resnet50_img_size_448_emd": chloride.Best_Model_3blocks_resnet50_imgsize_448_EMD(DESCRIPTOR_DEPTH),
                                  }}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
@@ -144,10 +144,10 @@ EXPECTED_RANGE = {
 #creates directories
 os.makedirs(EVALUATION_ROOT, exist_ok =True)
 
-os.makedirs(os.path.join(EVALUATION_ROOT, "predicted_values", IMAGES_TO_EVALUATE), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "histogram", IMAGES_TO_EVALUATE), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "error_from_image", "from_cnn1_output", IMAGES_TO_EVALUATE), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "error_from_image", "from_original_image", IMAGES_TO_EVALUATE), exist_ok =True)
+os.makedirs(os.path.join(EVALUATION_ROOT, "predicted_values"), exist_ok =True)
+os.makedirs(os.path.join(EVALUATION_ROOT, "histogram"), exist_ok =True)
+os.makedirs(os.path.join(EVALUATION_ROOT, "error_from_image", "from_cnn1_output"), exist_ok =True)
+os.makedirs(os.path.join(EVALUATION_ROOT, "error_from_image", "from_original_image"), exist_ok =True)
 os.makedirs(SAVE_EXCEL_PATH, exist_ok=True)
 
 ### Utilities functions and classes ###
@@ -258,7 +258,7 @@ def smooth_histogram(histogram: np.array, by: str = 'mean', filter_size: int = 3
 
     return smoothed_histogram
 
-class Statistics():
+class Statistics_Histogram():
 
     def __init__(self, sample_predictions_vector, sample_expected_value):
         self.sample_predictions_vector = torch.tensor(sample_predictions_vector, dtype=torch.float32)
@@ -279,6 +279,30 @@ class Statistics():
         self.std_mae = torch.std(self.absolute_error).item()
         self.std_mpe = torch.std(self.relative_error).item()
 
+class Statistics_XLSX():
+
+    def __init__(self, sample_predictions_vector: List, sample_expected_value_vector: List):
+        self.sample_predictions_vector = torch.tensor(sample_predictions_vector, dtype=torch.float32)
+        self.sample_expected_value_vector = torch.tensor(sample_expected_value_vector, dtype=torch.float32)
+
+        self.mean = torch.mean(self.sample_predictions_vector).item()
+        self.median = torch.median(self.sample_predictions_vector).item()
+        self.mode =  self.mode = torch.mode(self.sample_predictions_vector.flatten())[0].item()#scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
+        self.variance = torch.var(self.sample_predictions_vector).item()
+        self.std = torch.std(self.sample_predictions_vector).item()
+        self.mad = scipy.stats.median_abs_deviation(np.array(sample_predictions_vector).flatten())
+        self.min_value = torch.min(self.sample_predictions_vector).item()
+        self.max_value = torch.max(self.sample_predictions_vector).item()
+        self.absolute_error = torch.absolute(self.sample_predictions_vector - self.sample_expected_value_vector)
+        self.relative_error = (self.absolute_error/self.sample_expected_value_vector)*100
+        self.mae = torch.mean(self.absolute_error).item()
+        self.mpe = torch.mean(self.relative_error).item()
+        self.std_mae = torch.std(self.absolute_error).item()
+        self.std_mpe = torch.std(self.relative_error).item()
+        self.relative_error_mean = (torch.absolute(self.mean - self.sample_expected_value_vector[0])/sample_expected_value_vector[0]).item()*100
+        self.relative_error_median = (torch.absolute(self.median - self.sample_expected_value_vector[0])/sample_expected_value_vector[0]).item()*100
+        self.relative_error_mode = (torch.absolute(self.mode - self.sample_expected_value_vector[0])/sample_expected_value_vector[0]).item()*100
+
 def write_pdf_statistics():
     pass
 
@@ -286,9 +310,9 @@ def main(dataset_for_inference):
     dataset = load_dataset(dataset_for_inference)
     len_total_samples = int(len(os.listdir(os.path.join(ORIGINAL_IMAGE_ROOT)))/3)
     len_mode = int(len(os.listdir(os.path.join(SAMPLES_PATH, dataset_for_inference)))/3) #TODO alterar isso para abrir a partir do json de metadados
-    save_histogram_path = os.path.join(EVALUATION_ROOT, "histogram", dataset_for_inference)
-    save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, "error_from_image", "from_cnn1_output", dataset_for_inference)
-    save_error_from_image_path = os.path.join(EVALUATION_ROOT, "error_from_image","from_original_image", dataset_for_inference)
+    save_histogram_path = os.path.join(EVALUATION_ROOT, "histogram")
+    save_error_from_cnn1_path = os.path.join(EVALUATION_ROOT, "error_from_image", "from_cnn1_output")
+    save_error_from_image_path = os.path.join(EVALUATION_ROOT, "error_from_image","from_original_image")
     original_image_path = os.path.join(ORIGINAL_IMAGE_ROOT)
 
     ### Loads model ###
@@ -343,7 +367,7 @@ def main(dataset_for_inference):
         for i in range(len_mode):
             values = np.array(predicted_value_for_samples[f'sample_{i}']).flatten() #flattens for histogram calculation
             # calculates statistics
-            stats = Statistics(predicted_value_for_samples[f'sample_{i}'], expected_value_from_samples[f'sample_{i}'])
+            stats = Statistics_Histogram(predicted_value_for_samples[f'sample_{i}'], expected_value_from_samples[f'sample_{i}'])
 
             # define number of bins
             bins = int(math.ceil(max_value/(EXPECTED_RANGE[ANALYTE][0]*0.1/2))) #valor maximo do analito / (metade do pior erro relativo * (10% do menor valor esperado))
@@ -453,7 +477,7 @@ def main(dataset_for_inference):
     if CREATE_STATISTICS:
         sample_stats_dict = {}
         for i in range(0, sample_predicted_value.shape[0] - 1):
-            stats = Statistics(sample_predicted_value[i], sample_expected_value[i])
+            stats = Statistics_XLSX(sample_predicted_value[i], sample_expected_value[i])
             datetime, analyst_name, sample_prefix, blank_filename = get_sample_identity(f"sample_{i}", IDENTITY_PATH)
             sample_stats_dict[sample_prefix] = {
                                                 "analyst_name": analyst_name,
@@ -495,7 +519,7 @@ def main(dataset_for_inference):
     #         df_stats.loc[id, "std"] = math.sqrt(df_stats.loc[id, "variance"])
     #     blank_df.to_excel(os.path.join(f"{SAVE_EXCEL_PATH}", "blank_statistics.xlsx"))
 
-    excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{IMAGES_TO_EVALUATE}.xlsx")
+    excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{CURRENT_MODEL_NAME}_inference_{IMAGES_TO_EVALUATE}_samples.xlsx")
     df_stats.to_excel(excel_filename)
 
     write_pdf_statistics()

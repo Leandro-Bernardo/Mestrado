@@ -25,6 +25,11 @@ class PhSampleDataset(SampleDataset):
 class ProcessedPhSampleDataset(ProcessedSampleDataset):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self._ph_values = self.get_samples()
+
+    @property
+    def analyte_values(self):
+        return self._ph_values
 
     def _compute_masks(self, bgr_img: np.ndarray, lab_img: np.ndarray, chamber_type: ChamberType) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         (bright_msk, grid_msk, analyte_msk), _, lab_white = compute_masks(bgr_img=bgr_img, lab_img=lab_img, chamber_type=chamber_type)
