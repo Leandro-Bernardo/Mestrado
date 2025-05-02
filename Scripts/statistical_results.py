@@ -12,13 +12,14 @@ import pandas as pd
 
 from tqdm import tqdm
 
-from models import alkalinity, chloride
+from models import alkalinity, chloride, ph
 #from models.lightning import DataModule, BaseModel
 
 from torch.utils.data import  TensorDataset
 from torch import FloatTensor, UntypedStorage
 from chemical_analysis.alkalinity import AlkalinitySampleDataset, ProcessedAlkalinitySampleDataset, AlkalinityEstimationFunction
 from chemical_analysis.chloride import ChlorideSampleDataset, ProcessedChlorideSampleDataset, ChlorideEstimationFunction
+from chemical_analysis.ph import PhSampleDataset, ProcessedPhSampleDataset, PhEstimationFunction
 #from pytorch_lightning import Trainer
 #from pytorch_lightning.callbacks import ModelCheckpoint
 
@@ -57,8 +58,12 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     DESCRIPTOR_DEPTH = settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["descriptor_depth"]
     CNN1_OUTPUT_SHAPE =  settings["feature_extraction"][FEATURE_EXTRACTOR][ANALYTE]["cnn1_output_shape"]
 
-CURRENT_MODEL_URL = chloride._current_model_url
-CURRENT_MODEL_NAME = chloride._current_model_name
+CHOICE = {
+            'Chloride':[chloride._current_model_url, chloride._current_model_name],
+            'Ph': [ph._current_model_url, ph._current_model_name]}
+CURRENT_MODEL_URL = CHOICE.get(ANALYTE)[0]
+CURRENT_MODEL_NAME = CHOICE.get(ANALYTE)[1]
+
 ### Variables for pmf based model ###
 # checkpoint path
 PMF_MODEL_PATH = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}Network.ckpt")
@@ -110,6 +115,16 @@ networks_choices = {"Alkalinity":{"model_1": alkalinity.Model_1(),
                                  #"second_best_model_3blocks_resnet50_img_size_448": chloride.Second_Best_Model_3blocks_resnet50_img_size_448(DESCRIPTOR_DEPTH),
                                  "best_model_3blocks_resnet50_img_size_448_mse": chloride.Best_Model_3blocks_resnet50_imgsize_448_MSE(DESCRIPTOR_DEPTH),
                                  "best_model_3blocks_resnet50_img_size_448_emd": chloride.Best_Model_3blocks_resnet50_imgsize_448_EMD(DESCRIPTOR_DEPTH),
+                                 },
+                    "Ph": {
+                                 #"best_model_4blocks_resnet50": chloride.Best_Model_4blocks_resnet50(DESCRIPTOR_DEPTH),
+                                 #"best_model_3blocks_resnet50": chloride.Best_Model_3blocks_resnet50(DESCRIPTOR_DEPTH),
+                                 #"best_model_2blocks_resnet50": chloride.Best_Model_2blocks_resnet50(DESCRIPTOR_DEPTH),
+                                 #"best_model_2blocks_resnet50_img_size_448": chloride.Best_Model_2blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH),
+                                 #"best_model_3blocks_resnet50_img_size_448": chloride.Best_Model_3blocks_resnet50_imgsize_448(DESCRIPTOR_DEPTH),
+                                 #"second_best_model_3blocks_resnet50_img_size_448": chloride.Second_Best_Model_3blocks_resnet50_img_size_448(DESCRIPTOR_DEPTH),
+                                 "best_model_3blocks_resnet50_img_size_448_mse": ph.Best_Model_3blocks_resnet50_imgsize_448_MSE(DESCRIPTOR_DEPTH),
+                                 "best_model_3blocks_resnet50_img_size_448_emd": ph.Best_Model_3blocks_resnet50_imgsize_448_EMD(DESCRIPTOR_DEPTH),
                                  }}
 MODEL_NETWORK = networks_choices[ANALYTE][MODEL_VERSION].to("cuda")
 
@@ -121,6 +136,7 @@ dataset_processor = {"Alkalinity":{"dataset": AlkalinitySampleDataset, "processe
                      "Chloride": {"dataset": ChlorideSampleDataset, "processed_dataset": ProcessedChlorideSampleDataset},
                      #"Sulfate": {"dataset": SulfateSampleDataset, "processed_dataset": ProcessedSulfateSampleDataset},
                      #"Phosphate": {"dataset": PhosphateSampleDataset, "processed_dataset": ProcessedPhosphateSampleDataset},
+                     "Ph": {"dataset": PhSampleDataset, "processed_dataset": ProcessedPhSampleDataset},
                     }
 
 pca_stats = {
@@ -138,6 +154,7 @@ EXPECTED_RANGE = {
                 "Chloride": (10000.0, 300000.0),
                 "Phosphate": (0.0, 50.0),
                 "Sulfate":(0.0, 4000.0),
+                "Ph":(5.0, 9.0),
                  }
 
 
@@ -410,6 +427,10 @@ def main(dataset_for_inference):
             if ANALYTE == "Chloride":
                 text = 10000
                 text_median = 12000
+            
+            if ANALYTE == "Ph":
+                text = 210
+                text_median = 240
 
             ##text settings##
             # expected value
