@@ -28,33 +28,33 @@ parameters:
     max: 13
     min: 7
   input_layer:
-    values: [4096, 2048, 1024, 512,       ]
+    value:   512
   layer_13:
-    values: [4096, 2048, 1024, 512,       ]
+    values: [ 512, 256, 128,  ]
   layer_12:
-    values: [4096, 2048, 1024, 512,       ]
+    values: [ 512, 256, 128,  ]
   layer_11:
-    values: [4096, 2048, 1024, 512,       ]
+    values: [ 512, 256, 128,  ]
   layer_10:
-    values: [4096, 2048, 1024, 512,       ]
+    values: [ 512, 256, 128,  ]
   layer_9 :
-    values: [2048, 1024,  512, 256,       ]
+    values: [ 512, 256, 128, 64, 32, ]
   layer_8 :
-    values: [2048, 1024,  512, 256,       ]
+    values: [ 512, 256, 128, 64, 32, ]
   layer_7 :
-    values: [2048, 1024,  512, 256, 128,  ]
+    values: [ 512, 256, 128, 64, 32, ]
   layer_6 :
-    values: [ 512,  256,  128,  64,       ]
+    values: [ 256, 128, 64, 32, 16,  ]
   layer_5 :
-    values: [ 256,  128,  64,  32,        ]
+    values: [ 256, 128, 64, 32, 16,  ]
   layer_4 :
-    values: [ 128,   64,  32,  16,        ]
+    values: [ 128, 64, 32, 16,   8,  ]
   layer_3 :
-    values: [ 128,   64,  32,  16,   8,   ]
+    values: [ 128, 64, 32, 16,   8,  ]
   layer_2 :
-    values: [ 128,   64,  32,  16,   8,  4]
+    values: [ 64, 32, 16,   8,   4,  2 ]
   layer_1 :
-    values: [  64,   32,  16,   8,   4,  2]
+    values: [ 64, 32, 16,   8,   4,  2 ]
   output_layer:
     value: 1
 
