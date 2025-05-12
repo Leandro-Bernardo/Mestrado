@@ -424,38 +424,89 @@ def main(dataset_for_inference):
             if ANALYTE == "Alkalinity":
                 text = 210
                 text_median = 240
+
+                ##text settings##
+                # expected value
+                plt.text(x = x_max+0.5,  y=y_max - 9.92 * scale_factor,
+                        s = f" value:")
+                plt.text(x = x_max + text, y=y_max - 9.92 * scale_factor,
+                        s = f" {expected_value_from_samples[f'sample_{i}'][0][0]:.2f}", c = 'grey', alpha = 0.6)
+                # mean
+                plt.text(x = x_max+0.5,  y=y_max - 10.20 * scale_factor,
+                        s = f" mean:")
+                plt.text(x = x_max + text, y=y_max - 10.20 * scale_factor,
+                        s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
+                # median
+                plt.text(x = x_max ,  y=y_max - 10.49 * scale_factor,
+                        s = f" median:" )
+                plt.text(x = x_max + text_median, y=y_max - 10.49 * scale_factor,
+                        s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
+                # mode
+                plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
+                        s = f" mode:" )
+                plt.text(x = x_max + text,  y=y_max - 10.78 * scale_factor,
+                        s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
+                # stats
+                plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
+                        s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}", c = 'black')
+
             if ANALYTE == "Chloride":
                 text = 10000
                 text_median = 12000
-            
+
+                ##text settings##
+                # expected value
+                plt.text(x = x_max+0.5,  y=y_max - 9.92 * scale_factor,
+                        s = f" value:")
+                plt.text(x = x_max + text, y=y_max - 9.92 * scale_factor,
+                        s = f" {expected_value_from_samples[f'sample_{i}'][0][0]:.2f}", c = 'grey', alpha = 0.6)
+                # mean
+                plt.text(x = x_max+0.5,  y=y_max - 10.20 * scale_factor,
+                        s = f" mean:")
+                plt.text(x = x_max + text, y=y_max - 10.20 * scale_factor,
+                        s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
+                # median
+                plt.text(x = x_max ,  y=y_max - 10.49 * scale_factor,
+                        s = f" median:" )
+                plt.text(x = x_max + text_median, y=y_max - 10.49 * scale_factor,
+                        s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
+                # mode
+                plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
+                        s = f" mode:" )
+                plt.text(x = x_max + text,  y=y_max - 10.78 * scale_factor,
+                        s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
+                # stats
+                plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
+                        s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}", c = 'black')
+
             if ANALYTE == "Ph":
-                text = 210
-                text_median = 240
+                text = 0.17
+                text_median = 0.20
 
             ##text settings##
-            # expected value
-            plt.text(x = x_max+0.5,  y=y_max - 9.92 * scale_factor,
-                    s = f" value:")
-            plt.text(x = x_max + text, y=y_max - 9.92 * scale_factor,
-                    s = f" {expected_value_from_samples[f'sample_{i}'][0][0]:.2f}", c = 'grey', alpha = 0.6)
-            # mean
-            plt.text(x = x_max+0.5,  y=y_max - 10.20 * scale_factor,
-                    s = f" mean:")
-            plt.text(x = x_max + text, y=y_max - 10.20 * scale_factor,
-                    s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
-            # median
-            plt.text(x = x_max ,  y=y_max - 10.49 * scale_factor,
-                    s = f" median:" )
-            plt.text(x = x_max + text_median, y=y_max - 10.49 * scale_factor,
-                    s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
-            # mode
-            plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
-                    s = f" mode:" )
-            plt.text(x = x_max + text,  y=y_max - 10.78 * scale_factor,
-                    s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
-            # stats
-            plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
-                    s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}", c = 'black')
+                # expected value
+                plt.text(x = x_max,  y=y_max - 9.92 * scale_factor,
+                        s = f" value:")
+                plt.text(x = x_max + text, y=y_max - 9.92 * scale_factor,
+                        s = f" {expected_value_from_samples[f'sample_{i}'][0][0]:.2f}", c = 'grey', alpha = 0.6)
+                # mean
+                plt.text(x = x_max,  y=y_max - 10.20 * scale_factor,
+                        s = f" mean:")
+                plt.text(x = x_max + text, y=y_max - 10.20 * scale_factor,
+                        s = f" {stats.mean:.2f}", c = 'red', alpha = 0.6)
+                # median
+                plt.text(x = x_max ,  y=y_max - 10.49 * scale_factor,
+                        s = f" median:" )
+                plt.text(x = x_max + text_median, y=y_max - 10.49 * scale_factor,
+                        s = f"  {stats.median:.2f}", c = 'blue', alpha = 0.6)
+                # mode
+                plt.text(x = x_max ,  y=y_max - 10.78 * scale_factor,
+                        s = f" mode:" )
+                plt.text(x = x_max + text,  y=y_max - 10.78 * scale_factor,
+                        s = f" {stats.mode:.2f}", c = 'green', alpha = 0.6)
+                # stats
+                plt.text(x = x_max ,  y=y_max - 12.4 * scale_factor,
+                        s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}", c = 'black')
 
             #plt.text(x = max_value + 0.5,  y = 0,
             #         s = f" mean: {stats.mean:.2f}\n median: {stats.median:.2f}\n mode: {stats.mode:.2f}\n var: {stats.variance:.2f}\n std: {stats.std:.2f}\n min: {stats.min_value:.2f}\n max: {stats.max_value:.2f}")
@@ -528,23 +579,26 @@ def main(dataset_for_inference):
         #creates a dataframe and then saves the xmls file
         df_stats = pd.DataFrame(sample_stats_dict).transpose()
 
-    # TODO fix this
-    # # fixes the predicted values if blank samples were separated from training samples (if not, does nothing)
-    # if PROCESS_BLANK_FILES_SEPARATEDLY == True:
-    #     blank_df = pd.DataFrame(blank_stats_dict).transpose()
-    #     for id in df_stats.index:
-    #         blank_file_name = df_stats.loc[id, 'blank_id']
-    #         df_stats.loc[id, "mean"] = df_stats.loc[id, "mean"] - blank_df.loc[blank_file_name, "mean"]
-    #         df_stats.loc[id, "median"] = df_stats.loc[id, "median"] - blank_df.loc[blank_file_name, "median"]
-    #         df_stats.loc[id, "variance"] = df_stats.loc[id, "variance"] + blank_df.loc[blank_file_name, "variance"]  #Var(X-Y) = Var(X) + Var(Y) - 2Cov(X,Y) ;  Var(X+Y) = Var(X) + Var(Y) + 2Cov(X,Y)
-    #         df_stats.loc[id, "std"] = math.sqrt(df_stats.loc[id, "variance"])
-    #     blank_df.to_excel(os.path.join(f"{SAVE_EXCEL_PATH}", "blank_statistics.xlsx"))
+        # TODO fix this
+        # # fixes the predicted values if blank samples were separated from training samples (if not, does nothing)
+        # if PROCESS_BLANK_FILES_SEPARATEDLY == True:
+        #     blank_df = pd.DataFrame(blank_stats_dict).transpose()
+        #     for id in df_stats.index:
+        #         blank_file_name = df_stats.loc[id, 'blank_id']
+        #         df_stats.loc[id, "mean"] = df_stats.loc[id, "mean"] - blank_df.loc[blank_file_name, "mean"]
+        #         df_stats.loc[id, "median"] = df_stats.loc[id, "median"] - blank_df.loc[blank_file_name, "median"]
+        #         df_stats.loc[id, "variance"] = df_stats.loc[id, "variance"] + blank_df.loc[blank_file_name, "variance"]  #Var(X-Y) = Var(X) + Var(Y) - 2Cov(X,Y) ;  Var(X+Y) = Var(X) + Var(Y) + 2Cov(X,Y)
+        #         df_stats.loc[id, "std"] = math.sqrt(df_stats.loc[id, "variance"])
+        #     blank_df.to_excel(os.path.join(f"{SAVE_EXCEL_PATH}", "blank_statistics.xlsx"))
 
-    excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{CURRENT_MODEL_NAME}_inference_{IMAGES_TO_EVALUATE}_samples.xlsx")
-    df_stats.to_excel(excel_filename)
+        excel_filename = os.path.join(f"{SAVE_EXCEL_PATH}", f"{CURRENT_MODEL_NAME}_inference_{IMAGES_TO_EVALUATE}_samples.xlsx")
+        df_stats.to_excel(excel_filename)
 
-    write_pdf_statistics()
+        write_pdf_statistics()
 
+    # saves model URL
+    with open(os.path.join(EVALUATION_ROOT, f"URL_{CURRENT_MODEL_NAME}.txt"), "w") as file: # overrides if file exists
+        file.write(f"{CURRENT_MODEL_URL}")
 
 if __name__ == "__main__":
     main(dataset_for_inference=IMAGES_TO_EVALUATE)
