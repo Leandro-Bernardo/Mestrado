@@ -148,7 +148,8 @@ def main(sample_path: str, save_path: str, stage:str):
                     json.dump(processed_samples.analyte_values[i]['theoreticalValue'], f, ensure_ascii=False, indent=4)
             elif ANALYTE == 'Ph': # takes the raw value from json (and not the theoretical value) (exception because pH doesnt need the theoretical value correction)
                 with open(f"{save_path}/sample_{count_of_valid_samples}.txt", "w", encoding='utf-8') as f:
-                    json.dump(processed_samples.analyte_values[i]['sourceStock']['value'], f, ensure_ascii=False, indent=4)
+                    value = processed_samples.analyte_values[i]['sourceStock']['value'] if float(processed_samples.analyte_values[i]['sourceStock']['value']) != 0.0 else 7.0
+                    json.dump(value, f, ensure_ascii=False, indent=4)
 
             #saves analyte identifier
             with open(f"{save_path}/sample_{count_of_valid_samples}_identity.txt", "w", encoding='utf-8') as f:
