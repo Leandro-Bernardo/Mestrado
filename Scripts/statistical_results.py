@@ -281,9 +281,12 @@ class Statistics_Histogram():
         self.sample_predictions_vector = torch.tensor(sample_predictions_vector, dtype=torch.float32)
         self.sample_expected_value = torch.tensor(sample_expected_value, dtype=torch.float32)
 
+        global bins, min_value, max_value
+        self.histogram, self.bins_ranges = np.histogram(sample_predictions_vector, bins = bins, range = (min_value, max_value))
+
         self.mean = torch.mean(self.sample_predictions_vector).item()
         self.median = torch.median(self.sample_predictions_vector).item()
-        self.mode = torch.mode(self.sample_predictions_vector.flatten())[0].item()#scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
+        self.mode = self.bins_ranges[int(np.argmax(self.histogram))] #torch.mode(self.sample_predictions_vector.flatten())[0].item()#scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
         self.variance = torch.var(self.sample_predictions_vector).item()
         self.std = torch.std(self.sample_predictions_vector).item()
         self.mad = scipy.stats.median_abs_deviation(np.array(sample_predictions_vector).flatten())
@@ -302,9 +305,12 @@ class Statistics_XLSX():
         self.sample_predictions_vector = torch.tensor(sample_predictions_vector, dtype=torch.float32)
         self.sample_expected_value_vector = torch.tensor(sample_expected_value_vector, dtype=torch.float32)
 
+        global bins, min_value, max_value
+        self.histogram, self.bins_ranges = np.histogram(sample_predictions_vector, bins = bins, range = (min_value, max_value))
+
         self.mean = torch.mean(self.sample_predictions_vector).item()
         self.median = torch.median(self.sample_predictions_vector).item()
-        self.mode =  self.mode = torch.mode(self.sample_predictions_vector.flatten())[0].item()#scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
+        self.mode =  self.bins_ranges[int(np.argmax(self.histogram))] #self.mode = torch.mode(self.sample_predictions_vector.flatten())[0].item()#scipy.stats.mode(np.array(sample_predictions_vector).flatten())[0]#torch.linalg.vector_norm(torch.flatten(self.sample_predictions_vector), ord = 5).item()
         self.variance = torch.var(self.sample_predictions_vector).item()
         self.std = torch.std(self.sample_predictions_vector).item()
         self.mad = scipy.stats.median_abs_deviation(np.array(sample_predictions_vector).flatten())
@@ -373,27 +379,27 @@ def main(dataset_for_inference):
         for line in column_array_values:
             file.write(f"{line[0]}, {line[1]}\n")
 
+    # define number of bins
+    min_value, max_value = get_min_max_values(dataset_for_inference)
+    bins = int(math.ceil(max_value/(EXPECTED_RANGE[ANALYTE][0]*0.1/2))) #valor maximo do analito / (metade do pior erro relativo * (10% do menor valor esperado))
+
     if CREATE_HISTOGRAMS:
         ### Histograms ###
         print("calculating histograms of predictions\n")
         predicted_value_for_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(predicted_value,( -1, CNN1_OUTPUT_SHAPE, CNN1_OUTPUT_SHAPE)))}
         expected_value_from_samples = {f"sample_{i}" : value for i, value in enumerate(np.reshape(expected_value,( -1, CNN1_OUTPUT_SHAPE, CNN1_OUTPUT_SHAPE)))}
 
-        min_value, max_value = get_min_max_values(dataset_for_inference)
-
         for i in range(len_mode):
             values = np.array(predicted_value_for_samples[f'sample_{i}']).flatten() #flattens for histogram calculation
-            # calculates statistics
-            stats = Statistics_Histogram(predicted_value_for_samples[f'sample_{i}'], expected_value_from_samples[f'sample_{i}'])
-
-            # define number of bins
-            bins = int(math.ceil(max_value/(EXPECTED_RANGE[ANALYTE][0]*0.1/2))) #valor maximo do analito / (metade do pior erro relativo * (10% do menor valor esperado))
 
             # calculate histogram
             histogram, bins_ranges = np.histogram(a = values, bins = bins, range = (min_value, max_value))
 
             # smooths histogram with a filter (by) with size n x 1
             corrected_histogram = histogram #smooth_histogram(histogram = histogram, by = 'mean', filter_size = 3)
+
+            # calculates statistics
+            stats = Statistics_Histogram(predicted_value_for_samples[f'sample_{i}'], expected_value_from_samples[f'sample_{i}'])
 
             # generates matplotlib figure and add a histogram
             plt.figure(figsize=(15, 8))
