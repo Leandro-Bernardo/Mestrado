@@ -3,9 +3,10 @@ from random import choices
 import os
 
 ANALYTE = 'Chloride'
+LOSS = 'mse'
 num_of_samples = 40
 
-path = os.path.join(os.path.dirname(__file__), "..", "evaluation", f"{ANALYTE}")
+path = os.path.join(os.path.dirname(__file__), "..", "evaluation", f"{ANALYTE}", "planilhas_da_dissertacao", LOSS)
 excel_path = os.path.join(path, f"{ANALYTE}_planilha_dissertacao.xlsx")
 
 try:
