@@ -40,7 +40,7 @@ with open(os.path.join(".", "settings.yaml"), "r") as file:
     MODEL_VERSION = "best_model_3blocks_resnet50_img_size_448_mse" if settings["models"]["loss_function"] == "mean_squared_error" else "best_model_3blocks_resnet50_img_size_448_emd"#settings["chosen_model"]
     FEATURE_EXTRACTOR = settings["feature_extractor"]
     CNN_BLOCKS = settings["cnn_blocks"]
-    IMAGE_SIZE = settings["image_size"]
+    IMG_SIZE = settings["image_size"]
 
     # training hyperparams variables
     MAX_EPOCHS = settings["models"]["max_epochs"]
@@ -73,26 +73,26 @@ CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
 if SKIP_BLANK:
     # model path
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", "wandb")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMG_SIZE})", f"{LOSS_FUNCTION}", "wandb")
     # data paths
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank"))
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}",  "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # results path
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}","no_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}")
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "no_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}", "statistics" )
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}","no_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMG_SIZE})", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "no_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMG_SIZE})", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}", "statistics" )
 else:
     # model path
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", "wandb")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMG_SIZE})", f"{LOSS_FUNCTION}", "wandb")
     # data paths
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank"))
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
     ORIGINAL_IMAGE_ROOT = os.path.join(os.path.dirname(__file__), "..", "images", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
     DESCRIPTORS_ROOT = os.path.join(os.path.dirname(__file__), "..", "Udescriptors", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)")
     # results path
-    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}")
-    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "with_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}", "statistics" )
+    EVALUATION_ROOT = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMG_SIZE})", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}")
+    SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "with_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMG_SIZE})", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}", "statistics" )
 
 CHECKPOINT_FILENAME = f"{CURRENT_MODEL_NAME}.ckpt"
 CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_FILENAME)
