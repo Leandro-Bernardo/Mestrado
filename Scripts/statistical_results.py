@@ -73,7 +73,7 @@ CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "cache_dir")
 
 if SKIP_BLANK:
     # model path
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMAGE_SIZE})(loss_{LOSS_FUNCTION})")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "no_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", "wandb")
     # data paths
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "no_blank"))
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "no_blank", f"{IMAGES_TO_EVALUATE}")
@@ -84,7 +84,7 @@ if SKIP_BLANK:
     SAVE_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "evaluation", f"{ANALYTE}" , "no_blank", f"{IMAGES_TO_EVALUATE}_samples", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", f"{CURRENT_MODEL_NAME}", "statistics" )
 else:
     # model path
-    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)(img_size_{IMAGE_SIZE})(loss_{LOSS_FUNCTION})")
+    CHECKPOINT_ROOT = os.path.join(os.path.dirname(__file__), "checkpoints", f"{ANALYTE}", "with_blank", f"{FEATURE_EXTRACTOR}({CNN_BLOCKS}_blocks)", f"{LOSS_FUNCTION}", "wandb")
     # data paths
     SAMPLES_PATH = (os.path.join("..", "images", f"{ANALYTE}", "with_blank"))
     IDENTITY_PATH = os.path.join(os.path.dirname(__file__), "..", "images",f"{ANALYTE}", "with_blank", f"{IMAGES_TO_EVALUATE}")
