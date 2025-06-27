@@ -489,8 +489,8 @@ def main(dataset_for_inference):
                         s = f" var: {stats.variance:.2f}\n std: {stats.std:.2f}\n mad: {stats.mad:.2f}\n min: {stats.min_value}\n max: {stats.max_value:.2f}", c = 'black')
 
             if ANALYTE == "Ph":
-                text = 0.17
-                text_median = 0.20
+                text = 0.35
+                text_median = 0.43
 
             ##text settings##
                 # expected value
