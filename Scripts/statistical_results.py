@@ -374,7 +374,7 @@ def main(dataset_for_inference):
     values_ziped = zip(predicted_value, expected_value)  #zips predicted and expected values
     column_array_values = np.array(list(values_ziped))  # converts to numpy
     #saves prediction`s data
-    with open(os.path.join(EVALUATION_ROOT, "predicted_values"  f"{CURRENT_MODEL_NAME}({IMAGES_TO_EVALUATE}).txt"), "w") as file: # overrides if file exists
+    with open(os.path.join(EVALUATION_ROOT, "predicted_values", f"{CURRENT_MODEL_NAME}({IMAGES_TO_EVALUATE}).txt"), "w") as file: # overrides if file exists
         file.write("predicted_value,expected_value\n")
 
     with open(os.path.join(EVALUATION_ROOT, "predicted_values", f"{CURRENT_MODEL_NAME}({IMAGES_TO_EVALUATE}).txt"), "a+") as file:
