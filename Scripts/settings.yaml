@@ -45,7 +45,7 @@ feature_extraction:
 
 models:
   max_epochs: 25
-  #learning_rate: 0.001
+  learning_rate: 0.001
   learning_rate_patience: 5
   gradient_clipping: 0.5
   loss_function:   mean_squared_error #earth_movers_distance

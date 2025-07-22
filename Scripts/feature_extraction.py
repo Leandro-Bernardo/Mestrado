@@ -113,7 +113,7 @@ def main(load_path,  total_samples, stage):
             descriptors[index] = sample_features[j]
             expected_value[index] = sample_theoretical_value[j]
             index+=1
-    print(f"\nWritten lines: {index} \nExpected lines: {total_samples * CNN1_OUTPUT_SIZE}\n")
+    print(f"\nWritten lines: {index+1} \nExpected lines: {total_samples * CNN1_OUTPUT_SIZE}\n")
     assert index == total_samples * CNN1_OUTPUT_SIZE,  "written lines is lesser than expected lines"
 
     with open(os.path.join(SAVE_PATH, f"metadata_{stage}.json"), "w") as file:

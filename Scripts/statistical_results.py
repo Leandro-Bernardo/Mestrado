@@ -159,13 +159,13 @@ EXPECTED_RANGE = {
 
 
 #creates directories
-os.makedirs(EVALUATION_ROOT, exist_ok =True)
+os.makedirs(EVALUATION_ROOT, exist_ok = True)
 
-os.makedirs(os.path.join(EVALUATION_ROOT, "predicted_values"), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "histogram"), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "error_from_image", "from_cnn1_output"), exist_ok =True)
-os.makedirs(os.path.join(EVALUATION_ROOT, "error_from_image", "from_original_image"), exist_ok =True)
-os.makedirs(SAVE_EXCEL_PATH, exist_ok=True)
+os.makedirs(os.path.join(EVALUATION_ROOT, "predicted_values"), exist_ok = True)
+os.makedirs(os.path.join(EVALUATION_ROOT, "histogram"), exist_ok = True)
+os.makedirs(os.path.join(EVALUATION_ROOT, "error_from_image", "from_cnn1_output"), exist_ok = True)
+os.makedirs(os.path.join(EVALUATION_ROOT, "error_from_image", "from_original_image"), exist_ok = True)
+os.makedirs(SAVE_EXCEL_PATH, exist_ok = True)
 
 ### Utilities functions and classes ###
 
@@ -374,7 +374,7 @@ def main(dataset_for_inference):
     values_ziped = zip(predicted_value, expected_value)  #zips predicted and expected values
     column_array_values = np.array(list(values_ziped))  # converts to numpy
     #saves prediction`s data
-    with open(os.path.join(EVALUATION_ROOT, "predicted_values", f"{CURRENT_MODEL_NAME}({IMAGES_TO_EVALUATE}).txt"), "w") as file: # overrides if file exists
+    with open(os.path.join(EVALUATION_ROOT, "predicted_values" , f"{CURRENT_MODEL_NAME}({IMAGES_TO_EVALUATE}).txt"), "w") as file: # overrides if file exists
         file.write("predicted_value,expected_value\n")
 
     with open(os.path.join(EVALUATION_ROOT, "predicted_values", f"{CURRENT_MODEL_NAME}({IMAGES_TO_EVALUATE}).txt"), "a+") as file:
