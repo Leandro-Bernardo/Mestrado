@@ -1,10 +1,15 @@
 import pandas as pd
+import numpy as np
 from random import choices
+import matplotlib.pyplot as plt
+import seaborn as sns
 import os
+import yaml
+
 
 ANALYTE = 'Chloride'
 LOSS = 'mse'
-num_of_samples = 40
+num_of_samples = 45
 
 path = os.path.join(os.path.dirname(__file__), "..", "evaluation", f"{ANALYTE}", "planilhas_da_dissertacao", LOSS)
 excel_path = os.path.join(path, f"{ANALYTE}_planilha_dissertacao.xlsx")
